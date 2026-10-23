@@ -5,12 +5,12 @@
 | ID | AR-001 |
 | Tipo | Análisis (paso 3 de SPDD) |
 | Estado | Exploración hecha; **falta la revisión del equipo** antes de pasar al canvas |
-| Fecha | 2026-10-17; sección 4 agregada el 2026-10-23 (ronda 5) |
+| Fecha | 2026-10-17; sección 4 y hallazgos C5–C7 agregados el 2026-10-23 (rondas 5 y 7) |
 | Historia | [AR-001 Story](../../requirements/AR-001-202610171311-[Story]-agregador-resiliente.md) |
 
 Las secciones 1 a 3 salen de peticiones reales con `curl` (17 de octubre de 2026), de
 leer `servicio_inestable.py` y, para la sección 3, de correrlo en un contenedor. Nada
-está supuesto. Los hallazgos S1–S8 salen de leer el código; los C1–C4, de ejecutarlo.
+está supuesto. Los hallazgos S1–S8 salen de leer el código; los C1–C7, de ejecutarlo.
 La sección 4 es distinta: es una **simulación** (hallazgos M1–M6), y lo que dice hay
 que validarlo con el servicio real cuando exista el código.
 
@@ -104,14 +104,19 @@ flowchart TD
 
 Verificado el 2026-10-17 corriendo `servicio_inestable.py` sin modificar en un
 contenedor `python:3.12-slim` (Docker 29.7.2), con una instancia en el host por
-defecto y otra con `--host 0.0.0.0`.
+defecto y otra con `--host 0.0.0.0`. C5–C7 se verificaron el 2026-10-23 con Docker
+29.9.1, Compose 5.6.0 y `python:3.12.15-slim-trixie`, en un Compose de prueba que no
+está en el repo.
 
 | # | Hallazgo | Consecuencia para nosotros |
 |---|---|---|
 | C1 | Con el host por defecto (`127.0.0.1`) el servicio responde **solo desde dentro** del contenedor; desde la máquina, `curl` falla con la conexión cortada (exit 56) | En Compose hay que arrancarlo con `--host 0.0.0.0`. Es un parámetro, así que no se modifica el archivo (S3). |
-| C2 | `docker logs` sale **vacío** al arrancar: los dos `print` del inicio no usan `flush` y quedan en el buffer de Python. Las líneas por petición sí salen, porque usan `flush=True` | `PYTHONUNBUFFERED=1` en los contenedores (P17), o el mensaje de arranque no aparece en la evidencia. |
+| C2 | `docker logs` sale **vacío** al arrancar: los dos `print` del inicio no usan `flush` y quedan en el buffer de Python. Las líneas por petición sí salen, porque usan `flush=True` | `PYTHONUNBUFFERED=1` en los contenedores (D29), o el mensaje de arranque no aparece en la evidencia. |
 | C3 | Las peticiones que llegan a través de Docker aparecen con **una sola IP** (`172.17.0.1`, el gateway de Docker) | El bloqueo por IP tras un 429 sigue aplicando igual: la compuerta de D14 es necesaria también con Docker. |
 | C4 | `docker stop` tarda 0,5 s y sale con código 0: uvicorn maneja SIGTERM aunque sea el PID 1 | No se repite el problema del taller de Docker, donde `http.server` ignoraba SIGTERM y Docker lo mataba a los 10 s. Hay que comprobarlo también con el agregador. |
+| C5 | Los parámetros del servicio se pueden pasar desde Compose con variables interpoladas en `command` (`"${TASA_FALLOS:-0.30}"`): con `TASA_FALLOS=0.4 LATENCIA=5 docker compose up`, `/config` devolvió 0.4 y 5.0 | El docente cambia los parámetros sin editar archivos (D28). |
+| C6 | Desde un contenedor que no está en el Compose, `host.docker.internal` **no resuelve** en Linux («Name or service not known»). Con `--add-host host.docker.internal:host-gateway` sí llega a la instancia publicada en el puerto 9000 de la máquina, y las peticiones aparecen con la IP del gateway (`172.18.0.1`) | El Compose del agregador lleva `extra_hosts` (D30). La IP única sigue haciendo necesaria la compuerta (C3). |
+| C7 | Un healthcheck con `python -c "import urllib.request; urllib.request.urlopen('…/salud', timeout=2)"` funciona en la imagen slim, y `docker compose up --wait` vuelve cuando el servicio está sano. Los chequeos **no** aparecen en el log del servicio, que solo registra las rutas `/sensores` | Los healthchecks no ensucian la evidencia de reintentos (D31). Con `PYTHONUNBUFFERED=1` sí salen los mensajes de arranque (C2). |
 
 ## 4. Simulación de los reintentos (ronda 5)
 
@@ -198,10 +203,11 @@ datos», ni un sensor con lectura, que es el caso que responde 502/504 (D21).
    con `docker stop` (C4).
 8. Ninguna petición propia pasa de su plazo: ni un intento ni una espera se extienden
    más allá de la fecha límite (D18).
+9. Una `Idempotency-Key` ya usada nunca crea una segunda alerta (D25).
 
 ## 6. Preguntas abiertas que salieron del análisis
 
 En la ronda 5 se cerraron P08 (D17 y D18), P09 (D21), P11 (D22) y P12 (D20), y en
-la 6, P20 (D23). Siguen en la tabla de
-[decisiones pendientes](../../README.md#decisiones-pendientes) del README: P02 (TTL),
-P10 (búsqueda vacía), y P16–P19 y P21 (cómo se arma Docker).
+la 6, P20 (D23). En la 7 se cerraron P16–P19 y P21, cómo se arma Docker (D27–D31).
+Siguen en la tabla de [decisiones pendientes](../../README.md#decisiones-pendientes)
+del README: P02 (TTL) y P10 (búsqueda vacía).

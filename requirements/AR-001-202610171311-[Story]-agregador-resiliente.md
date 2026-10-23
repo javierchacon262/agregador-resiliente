@@ -4,7 +4,7 @@
 |---|---|
 | ID | AR-001 |
 | Tipo | Historia (paso 1 de SPDD) |
-| Estado | Borrador revisado en las rondas 1–6 de decisiones; quedan pendientes en el [README](../README.md#decisiones-pendientes) |
+| Estado | Borrador revisado en las rondas 1–7 de decisiones; quedan pendientes en el [README](../README.md#decisiones-pendientes) |
 | Fecha | 2026-10-17 |
 | Fuente | Enunciado «Evaluación-taller: Agregador resiliente de APIs», Sistemas Distribuidos, UIS |
 
@@ -85,10 +85,17 @@ estadísticas por tipo y ubicación y compararlas con el clima exterior.
 Como cliente que puede perder la respuesta y reintentar, quiero que repetir la misma
 creación no genere dos alertas.
 
-- `POST /v1/alertas` con cabecera `Idempotency-Key`: dos peticiones con la misma
-  clave crean **una** alerta y devuelven **la misma** respuesta.
-- Qué es una alerta y la semántica exacta de la clave: pendientes
-  ([P06, P07](../README.md#decisiones-pendientes)).
+- Una alerta es un umbral registrado: objetivo (ciudad por id o sensor), variable,
+  condición y umbral. Solo se guarda, no se evalúa
+  ([D24](../README.md#log-de-decisiones)).
+- `POST /v1/alertas` la crea: **201** con `Location`. `GET /v1/alertas` las lista y
+  `GET /v1/alertas/{id}` trae una, o **404** si no existe.
+- `Idempotency-Key` es obligatoria ([D25](../README.md#log-de-decisiones)):
+  - sin clave → **400**;
+  - misma clave y mismo cuerpo → **la misma** respuesta, sin crear otra alerta;
+  - misma clave con otro cuerpo → **422**;
+  - misma clave mientras la primera sigue en curso → **409**.
+- Las alertas y las claves viven en memoria; las claves duran 24 h.
 
 ### HU5 · Saber si el agregador está vivo
 
@@ -105,16 +112,19 @@ Como docente quiero levantar el agregador y el servicio inestable con un solo co
 en contenedores, y poder apuntar el agregador a mi propia instancia, para revisar la
 entrega sin instalar dependencias en mi máquina ([D16](../README.md#log-de-decisiones)).
 
-- Un comando de Docker Compose levanta el agregador y el servicio inestable; la
-  estructura exacta está en [P16](../README.md#decisiones-pendientes).
+- `docker compose up --wait` levanta el agregador y el servicio inestable con una
+  sola imagen ([D28, D29](../README.md#log-de-decisiones)).
 - El servicio inestable arranca con `--host 0.0.0.0` (si no, no es alcanzable desde
-  fuera de su contenedor) y sus parámetros de fallos se configuran desde Compose.
-- La URL del servicio inestable se cambia con una variable de entorno, incluido el
-  caso de una instancia que corre fuera de Compose
-  ([P18](../README.md#decisiones-pendientes)).
-- La colección de pruebas y la medición de latencia también corren en contenedores.
-- `GET /salud` del agregador responde cuando el contenedor está listo
-  ([P19](../README.md#decisiones-pendientes)).
+  fuera de su contenedor) y sus parámetros de fallos se pasan por variables, sin
+  editar archivos: `TASA_FALLOS=0.4 LATENCIA=5 docker compose up --wait`.
+- `SERVICIO_INESTABLE_URL` apunta el agregador a otra instancia, incluida una que
+  corre en otro contenedor de la máquina del docente, con `host.docker.internal`
+  ([D30](../README.md#log-de-decisiones)).
+- La colección de pruebas y la medición de latencia corren con
+  `docker compose run --rm pruebas` ([D26, D28](../README.md#log-de-decisiones)).
+- Los dos servicios tienen healthcheck a `/salud`; el agregador no espera al
+  servicio inestable para arrancar, y las pruebas esperan a los dos
+  ([D31](../README.md#log-de-decisiones)).
 - `docker compose logs` muestra los intentos y las esperas desde el arranque (con
   `PYTHONUNBUFFERED=1`), porque esos logs son la evidencia de los reintentos.
 - `docker stop` termina el agregador limpio, sin esperar los 10 s de gracia.
@@ -136,7 +146,8 @@ entrega sin instalar dependencias en mi máquina ([D16](../README.md#log-de-deci
    preguntas a–d de la Parte D.
 3. Evidencias de reintentos: registros donde se vean intentos, esperas y respeto de
    Retry-After.
-4. Colección de peticiones de prueba que el docente pueda ejecutar.
+4. Colección de peticiones de prueba que el docente pueda ejecutar, en pytest + httpx
+   (D26).
 5. `/docs` describe correctamente el contrato.
 6. Dockerfile y Docker Compose con los que todo lo anterior corre en contenedores
    desde un clon limpio del repo (D16). No hay instrucciones sin Docker (D23).

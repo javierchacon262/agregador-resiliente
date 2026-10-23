@@ -11,8 +11,8 @@ registrada en este README.
 
 ## Estado
 
-> **Fase actual: aclarar requerimientos (paso 2 de SPDD).** Hay 23 decisiones tomadas
-> y 16 pendientes. **Todavía no hay código**: el equipo decidió cerrar las decisiones
+> **Fase actual: aclarar requerimientos (paso 2 de SPDD).** Hay 31 decisiones tomadas
+> y 9 pendientes. **Todavía no hay código**: el equipo decidió cerrar las decisiones
 > antes de desarrollar. Lo único ejecutable es `servicio_inestable.py`, del docente,
 > y la simulación de reintentos del análisis.
 
@@ -54,7 +54,8 @@ API propia (todo bajo `/v1`, salvo la salud):
 | `GET /v1/ciudades?nombre=&pais=` | Candidatos de una búsqueda, con departamento y país | Open-Meteo geocoding `search` |
 | `GET /v1/ciudades/{id}/clima?dias=` | Clima actual y pronóstico por día de la ciudad elegida | Open-Meteo geocoding `get` → `forecast` |
 | `GET /v1/sensores` | Todos los sensores con su lectura, tolerando fallos | Servicio inestable (paginación + lecturas) |
-| `POST /v1/alertas` | Crea una alerta; idempotente con `Idempotency-Key` | Ninguna |
+| `POST /v1/alertas` | Crea una alerta de umbral (201 + `Location`); idempotente con `Idempotency-Key` obligatoria | Ninguna |
+| `GET /v1/alertas` y `GET /v1/alertas/{id}` | Lista las alertas o trae una | Ninguna |
 | `GET /salud` | Comprobación de vida del agregador | Ninguna |
 | `GET /dashboard` | Dashboard estático (fase 2) | Nuestra propia API |
 
@@ -69,7 +70,7 @@ flowchart LR
             API --> ID["Almacén de<br/>Idempotency-Key"]
         end
         SI["contenedor servicio-inestable<br/>--host 0.0.0.0"]
-        PR["contenedor pruebas<br/>a demanda (propuesta P16)"]
+        PR["contenedor pruebas<br/>pytest, perfil pruebas"]
     end
     RS -->|"máx. 3 intentos, 15 s"| GEO["Open-Meteo geocoding<br/>search · get"]
     RS -->|"máx. 3 intentos, 15 s"| FC["Open-Meteo<br/>forecast"]
@@ -139,7 +140,9 @@ la 1 a la 3 se iteró con el agente antes de escribir nada; la 4 la propuso el e
 después de abrir el PR. La ronda 5 (2026-10-23) cerró los pendientes de resiliencia
 con el apoyo de una simulación (sección 4 del [análisis](spdd/analysis/), hallazgos
 M1–M6), y confirmó D07 y los supuestos S1–S3. La 6 la propuso el equipo después de
-abrir el PR de la ronda 5.
+abrir el PR de la ronda 5. La 7, el mismo día, cerró la idempotencia y cómo se arma
+Docker; lo de Docker se verificó con Compose antes de registrarlo (hallazgos C5–C7
+del análisis).
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -166,6 +169,14 @@ abrir el PR de la ronda 5.
 | D21 | `GET /v1/sensores` responde **502/504** (según D20) si no obtuvo ningún sensor **o ninguna lectura**; si hay al menos una lectura, 200 con `completo: false` y el motivo (D15). Cierra P09 y R1 | Solo cuando falta la primera página (lo que había recomendado el agente); 200 vacío con `completo: false` | Elección del equipo: una lista de sensores sin ningún valor se trata como fallo de la dependencia, no como resultado parcial. En la simulación pasa el 0,5 % de las veces (defecto) y el 1,9 % (enunciado) | R, A | 5 |
 | D22 | **Reintentos también hacia Open-Meteo**, con la misma función y reglas, sin compuerta (no manda Retry-After, E10), máximo 3 intentos y plazo de 15 s. Los **errores de conexión** (conexión rechazada o cortada) se reintentan hacia las dos dependencias. Cierra P11 | Igual que sensores, con 6 intentos; solo errores de conexión y timeouts; no reintentar Open-Meteo | Un fallo pasajero de Open-Meteo no debería volverse un 502 si un segundo intento lo resuelve. Pero es estable y la IP de la sala es compartida (E13): si manda un 429, insistir 6 veces perjudica a todos | A | 5 |
 | D23 | **Nada fuera de Docker**, tampoco con el docente: no hay plan B con `venv`. Cierra P20 y R4 | Plan B con `venv` documentado en el README (la propuesta de P20) | El docente confirmó que corre todo en Docker. Un plan B no cubriría ningún caso real y obligaría a mantener instrucciones duplicadas y a probar el código fuera del contenedor (S2) | S, N | 6 |
+| D24 | Una alerta es un **umbral registrado**: objetivo (ciudad por id o sensor), variable, condición y umbral. `POST /v1/alertas` la crea (201 + `Location`), `GET /v1/alertas` las lista y `GET /v1/alertas/{id}` trae una (404 si no existe). Solo se guarda, no se evalúa, y vive en memoria: se pierde al reiniciar el contenedor. Cierra P06 | Umbral evaluado al consultar; solo el POST | El recurso sigue sin dependencias externas, así que la idempotencia se demuestra sin el ruido de los fallos. Un recurso que se crea y se puede leer es mejor diseño de API, y el 201 tiene a dónde apuntar con `Location` | R, E | 7 |
+| D25 | `Idempotency-Key` **obligatoria**, según el borrador IETF: sin clave → 400; misma clave y mismo cuerpo → la respuesta guardada, sin crear otra alerta; misma clave con otro cuerpo → 422; misma clave con la primera en curso → 409. El cuerpo se compara por su huella (SHA-256 del JSON normalizado) y las claves duran 24 h en memoria. Cierra P07 | Clave opcional (como Stripe); mínima, solo repetir la respuesta | Una clave obligatoria deja claro en `/docs` qué garantiza la API. El 422 y el 409 cubren los errores reales de un cliente que reintenta: reutilizar una clave con otro cuerpo, o reintentar antes de que llegue la primera respuesta | R, A | 7 |
+| D26 | Colección de pruebas en **pytest + httpx**, en la misma imagen que la medición de latencia. Cada prueba es una petición o una cadena, con un docstring que dice qué demuestra; contra el servicio inestable se afirman invariantes (200, 502 o 504; `completo` coherente), no resultados exactos. Cierra P22, un pendiente nuevo que salió de P16 y P21 en esta ronda | Hurl; Postman + newman | Un solo lenguaje y una sola imagen para las pruebas y la latencia (P04). El docente corre un comando y ve qué pasa y qué falla | O, N | 7 |
+| D27 | **Sin CI**: se prueba a mano, con la colección (D26), antes de cada entrega. Cierra P21 | CI completa en cada PR (lo que había recomendado el agente); CI que solo construye y comprueba `/salud` | Elección del equipo. La reproducibilidad depende de esa prueba manual desde un clon limpio (punto 6 de la definición de terminado). Ver el riesgo R5 | N | 7 |
+| D28 | **Una imagen y un Dockerfile para tres servicios** de Compose, con distinto comando: `agregador`, `servicio-inestable` (`servicio_inestable.py` sin modificar, con `--host 0.0.0.0`) y `pruebas` (pytest y latencia), este último bajo el perfil `pruebas` y con `docker compose run --rm pruebas`. Los parámetros del servicio inestable van por variables con valores por defecto (`TASA_FALLOS=0.4 LATENCIA=5 docker compose up`). Cierra P16 | Una imagen por servicio; parámetros fijos en el Compose | Un solo build para el docente, que cambia los parámetros sin editar archivos. Verificado: los parámetros llegan al servicio (C5) | S | 7 |
+| D29 | Imagen base **fijada por tag exacto y digest**: `python:3.12.15-slim-trixie@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704`. Además: `requirements.txt` con versiones exactas, usuario no root, `PYTHONUNBUFFERED=1` y `CMD` en forma exec. Cierra P17 | Tag exacto sin digest; tag flotante `python:3.12-slim` | Es la misma imagen byte a byte en cualquier máquina, de la entrega a la revisión; actualizarla es a mano. `PYTHONUNBUFFERED` hace que los logs salgan desde el arranque (C2) y el `CMD` exec deja que `docker stop` termine limpio (C4) | S, N | 7 |
+| D30 | `SERVICIO_INESTABLE_URL`, por defecto `http://servicio-inestable:9000`, con dos casos documentados: (A) el servicio del Compose con los parámetros del docente; (B) su propia instancia en otro contenedor publicado en su máquina, con `http://host.docker.internal:9000`. El Compose trae `extra_hosts: ["host.docker.internal:host-gateway"]` para que B funcione en Linux. Cierra P18 | Solo el del Compose; red de Docker compartida | Cubre las dos formas en que el docente puede tener «su propia instancia» sin pedirle que sepa de redes de Docker. Verificado: sin `extra_hosts`, en Linux el nombre no resuelve (C6) | S | 7 |
+| D31 | Healthcheck a `/salud` en los dos servicios, con Python (la imagen no trae `curl`). **El agregador no espera al servicio inestable**; las pruebas esperan a que los dos estén sanos, y `docker compose up --wait` vuelve cuando están listos. Cierra P19 | El agregador espera al servicio (`depends_on: service_healthy`, la propuesta de P19); sin healthchecks | El agregador es resiliente: si el servicio no está, reintenta y responde 502/504 (D20, D22), y así arranca igual en el caso B de D30. Verificado: los chequeos no aparecen en el log del servicio, que es la evidencia (C7) | S | 7 |
 
 ### Riesgos y matices
 
@@ -175,6 +186,7 @@ abrir el PR de la ronda 5.
 | R2 | Con D13 el peor caso se alarga: 3 + 5 + 8 + 8 s de timeouts más las esperas pasa de 25 s | **Cerrado por D17 y D18**: 6 intentos por llamada, pero ninguna petición pasa de su plazo (45 s en sensores, 15 s en Open-Meteo). |
 | R3 | D11: el repo es público antes de la entrega | Aceptado por el equipo. |
 | R4 | D16 depende de que el docente tenga Docker. En el taller de FastAPI de esta misma materia se dijo que no lo tenía, y el enunciado pide no instalar nada que exija reiniciar (Docker Desktop en Windows suele pedir WSL2 y un reinicio) | **Cerrado por D23**: el docente confirmó que corre todo en Docker. |
+| R5 | D27: sin CI, un Dockerfile o un Compose roto solo se detecta en la prueba manual | Aceptado por el equipo. Antes de cada entrega: clon limpio, `docker compose up --wait` y `docker compose run --rm pruebas`. |
 
 ### D12 en detalle: reintentos, función por función
 
@@ -319,30 +331,24 @@ tabla de arriba.
 | P03 | Cómo saltarse la caché para medir | Cabecera estándar `Cache-Control: no-cache` en la petición, y en la respuesta `X-Cache: HIT` o `MISS` | HU6 |
 | P04 | Método de medición de latencia | Script que hace 20 peticiones en frío y 20 en caliente y reporta mediana y p95 | HU6 |
 | P05 | Endpoint de métricas para el panel de resiliencia | `GET /v1/metricas` con reintentos por causa, aciertos de caché, latencias y estado de las dependencias | D10 |
-| P06 | Qué es una «alerta» | Alerta de umbral: ciudad o sensor + variable + umbral (p. ej. «avisar si Bucaramanga pasa de 30 °C») | HU4 |
-| P07 | Semántica de `Idempotency-Key` | Según el borrador IETF: sin clave → 400; misma clave y mismo cuerpo → la respuesta guardada; misma clave con otro cuerpo → 422; misma clave en curso → 409; claves en memoria por 24 h | HU4 |
 | P10 | Búsqueda sin coincidencias | 200 con lista vacía (una búsqueda vacía no es un recurso inexistente); el 404 queda para `/v1/ciudades/{id}` | HU1 |
 | P13 | Formato del log de evidencias | Una línea por intento con hora en ms, intento n/MÁXIMO, URL, resultado, espera y Retry-After, junto al log del servicio (no tenemos `tcpspy.py`) | Entrega |
 | P14 | Herramienta SPDD | Plantillas propias de este repo (sin instalar nada) frente a la CLI comunitaria OpenSPDD | Canvas |
 | P15 | ¿Hacemos la Parte E (consumo cruzado, +10)? | Decidir cuando el backend esté terminado | — |
-| P16 | Estructura de Docker Compose | Servicios `agregador` y `servicio-inestable`; las pruebas y la medición de latencia como servicio `pruebas` bajo un perfil, con `docker compose run --rm pruebas`. Los parámetros de fallos del servicio inestable se pasan desde Compose como argumentos de arranque | D16 |
-| P17 | Imagen del agregador | `python:3.12-slim` fijada (¿por tag o por digest?), `requirements.txt` con versiones exactas, usuario no root, `PYTHONUNBUFFERED=1` y `CMD` en forma exec | D16 |
-| P18 | Cómo apuntar a la instancia del docente | `SERVICIO_INESTABLE_URL`, por defecto `http://servicio-inestable:9000` (nombre del servicio en Compose). Si el docente corre su servicio en su máquina, `http://host.docker.internal:9000`, que en Linux necesita `extra_hosts: ["host.docker.internal:host-gateway"]` | D16 |
-| P19 | Healthchecks y orden de arranque | Healthcheck a `/salud` en los dos servicios, hecho con Python porque la imagen slim no trae `curl`; el agregador arranca con `depends_on: condition: service_healthy` | D16 |
-| P21 | ¿CI que demuestre la reproducibilidad? | GitHub Actions que en cada PR construya las imágenes, levante Compose y corra la colección de pruebas | D16 |
 
 ### Supuestos (confirmados en la ronda 5)
 
 | ID | Supuesto |
 |---|---|
 | S1 | La API y el código van en español, como el enunciado (`/v1/ciudades`, `alertas`). |
-| S2 | Con D16, la versión de Python la fija la imagen (propuesta: 3.12, ver P17). Como no hay plan B (D23), el código no necesita correr fuera de la imagen. |
+| S2 | Con D16, la versión de Python la fija la imagen: 3.12.15, fijada por tag y digest (D29). Como no hay plan B (D23), el código no necesita correr fuera de la imagen. |
 | S3 | `servicio_inestable.py` no se modifica: es del docente y se configura por parámetros. |
 
 ## Cómo correr lo que ya existe
 
-Por ahora solo el servicio inestable. Todavía no hay Dockerfile ni Compose (P16), pero
-se puede correr en un contenedor con la imagen oficial de Python:
+Por ahora solo el servicio inestable. Todavía no hay Dockerfile ni Compose: ya están
+decididos (D28–D31) y se escriben con el código. Mientras tanto, el servicio se puede
+correr en un contenedor con la imagen oficial de Python:
 
 ```bash
 docker run --rm -p 9000:9000 -v "$PWD":/app:ro -w /app python:3.12-slim \
