@@ -9,6 +9,7 @@ import asyncio
 import random
 import time
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -129,10 +130,17 @@ class CompuertaRetryAfter:
     el log del docente las mostraría como «no respetó Retry-After».
     """
 
-    def __init__(self, reloj: Reloj = time.monotonic, dormir: Dormir = asyncio.sleep):
+    def __init__(self, reloj: Reloj = time.monotonic, dormir: Dormir = asyncio.sleep, ventana_envio: float = 0.25):
         self._hasta = 0.0
         self._reloj = reloj
         self._dormir = dormir
+        # Turno de envío (C8): las peticiones salen de a una, y cada una retiene el turno
+        # hasta que llega su respuesta o pasa `ventana_envio`. El servicio decide el 429
+        # antes de dormir, así que vuelve en milisegundos y cierra la compuerta antes de
+        # que salga la siguiente. Una respuesta lenta suelta el turno al vencer la
+        # ventana, y las lecturas siguen en paralelo (D14).
+        self.ventana_envio = ventana_envio
+        self.turno = asyncio.Lock()
 
     @property
     def hasta(self) -> float:
@@ -190,31 +198,49 @@ async def llamar_con_reintentos(
         return ErrorDependencia(politica.dependencia, causa, intentos, detalle)
 
     causa = "plazo"
+    async def enviar(restante: float, timeout: httpx.Timeout) -> httpx.Response:
+        # El timeout de httpx corta cada intento (D19); el de asyncio garantiza que el
+        # intento tampoco pase del plazo de la petición (D18).
+        async with asyncio.timeout(restante):
+            respuesta = await cliente.request(metodo, url, params=params, timeout=timeout)
+        # Un 429 cierra la compuerta aquí mismo, antes de que se suelte el turno de
+        # envío: así ninguna otra llamada sale sin saberlo (C8).
+        if compuerta is not None and respuesta.status_code == 429:
+            if (retry_after := leer_retry_after(respuesta)) is not None:
+                compuerta.cerrar_hasta(reloj() + retry_after)
+        return respuesta
+
     enviados = 0
     for intento in range(politica.maximo):
-        if compuerta is not None and compuerta.falta() > 0:
-            if compuerta.hasta >= fecha_limite:
-                registrar(intento, "no sale: la compuerta abre después del plazo")
+        async with compuerta.turno if compuerta is not None else nullcontext():
+            if compuerta is not None and compuerta.falta() > 0:
+                if compuerta.hasta >= fecha_limite:
+                    registrar(intento, "no sale: la compuerta abre después del plazo")
+                    raise rendirse("plazo", enviados)
+                registrar(intento, f"espera la compuerta {evidencia.segundos(compuerta.falta())}")
+                await compuerta.esperar()
+
+            restante = fecha_limite - reloj()
+            if restante <= 0:
                 raise rendirse("plazo", enviados)
-            registrar(intento, f"espera la compuerta {evidencia.segundos(compuerta.falta())}")
-            await compuerta.esperar()
+            lectura = min(timeout_para(intento, politica.timeouts_lectura), restante)
+            timeout = httpx.Timeout(lectura, connect=min(politica.timeout_conexion, restante))
 
-        restante = fecha_limite - reloj()
-        if restante <= 0:
-            raise rendirse("plazo", enviados)
-        lectura = min(timeout_para(intento, politica.timeouts_lectura), restante)
-        timeout = httpx.Timeout(lectura, connect=min(politica.timeout_conexion, restante))
+            enviados += 1
+            evidencia.peticion_actual().intentos += 1
+            inicio = reloj()
+            tarea = asyncio.ensure_future(enviar(restante, timeout))
+            if compuerta is not None:
+                try:
+                    await asyncio.wait({tarea}, timeout=compuerta.ventana_envio)
+                except asyncio.CancelledError:
+                    tarea.cancel()
+                    raise
 
-        enviados += 1
-        evidencia.peticion_actual().intentos += 1
-        inicio = reloj()
         respuesta = None
         retry_after = None
         try:
-            # El timeout de httpx corta cada intento (D19); el de asyncio garantiza que
-            # el intento tampoco pase del plazo de la petición (D18).
-            async with asyncio.timeout(restante):
-                respuesta = await cliente.request(metodo, url, params=params, timeout=timeout)
+            respuesta = await tarea
         except TimeoutError:
             causa, resultado = "plazo", "plazo agotado"
         except httpx.TimeoutException:
@@ -239,8 +265,6 @@ async def llamar_con_reintentos(
             retry_after = leer_retry_after(respuesta)
             if retry_after is not None:
                 resultado += f" · Retry-After {retry_after:g} s"
-                if codigo == 429 and compuerta is not None:
-                    compuerta.cerrar_hasta(reloj() + retry_after)
 
         if metricas:
             metricas.registrar_intento(politica.dependencia, causa)

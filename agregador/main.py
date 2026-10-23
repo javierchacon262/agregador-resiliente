@@ -13,7 +13,7 @@ from agregador.idempotencia import AlmacenIdempotencia
 from agregador.metricas import RegistroMetricas
 from agregador.modelos import CuerpoErrorDependencia, Salud
 from agregador.resiliencia import CompuertaRetryAfter, ErrorDependencia, Politica
-from agregador.rutas import alertas, ciudades, metricas
+from agregador.rutas import alertas, ciudades, metricas, sensores
 
 
 @asynccontextmanager
@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     estado.config = config
     estado.metricas = RegistroMetricas()
     # Una sola compuerta para todas las llamadas al servicio inestable (D14).
-    estado.compuerta = CompuertaRetryAfter()
+    estado.compuerta = CompuertaRetryAfter(ventana_envio=config.ventana_envio_s)
     # Cachés en memoria con su TTL (D32); los nombres van en Cache-Status (D33).
     estado.cache_ciudades = CacheTTL("agregador-ciudades", config.ttl_ciudades_s)
     estado.cache_pronostico = CacheTTL("agregador-pronostico", config.ttl_pronostico_s)
@@ -68,6 +68,7 @@ app = FastAPI(
 )
 app.add_middleware(MiddlewareEvidencia)
 app.include_router(ciudades.router)
+app.include_router(sensores.router)
 app.include_router(alertas.router)
 app.include_router(metricas.router)
 
