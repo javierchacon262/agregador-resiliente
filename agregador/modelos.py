@@ -127,3 +127,50 @@ class NuevaAlerta(BaseModel):
 class Alerta(NuevaAlerta):
     id: str = Field(examples=["a-0001"])
     creada: datetime = Field(description="UTC")
+
+
+# Sensores ─────────────────────────────────────────────────────────────────────────
+
+
+class Lectura(BaseModel):
+    valor: float = Field(examples=[24.3])
+    unidad: str = Field(examples=["°C"])
+    marca_tiempo: datetime
+
+
+class SensorConLectura(BaseModel):
+    id: str = Field(examples=["S-001"])
+    tipo: str = Field(examples=["temperatura"])
+    ubicacion: str = Field(examples=["Edificio A"])
+    lectura: Lectura | None = Field(description="null si no se pudo leer; el porqué va en `motivo`")
+    motivo: str | None = Field(default=None, examples=["sin respuesta (503)"])
+
+
+class RespuestaSensores(BaseModel):
+    """Todos los sensores con su lectura, aunque el servicio falle (D15, D21)."""
+
+    sensores: list[SensorConLectura]
+    completo: bool = Field(description="false si faltó alguna página o alguna lectura")
+    motivo: str | None = Field(default=None, examples=["3 de 23 sensores sin lectura"])
+
+
+# Respuestas del servicio inestable: se validan antes de usarlas (Parte A del enunciado).
+
+
+class SensorServicio(BaseModel):
+    id: str
+    tipo: str
+    ubicacion: str
+
+
+class PaginaSensores(BaseModel):
+    sensores: list[SensorServicio]
+    siguiente: str | None
+
+
+class LecturaServicio(BaseModel):
+    sensor_id: str
+    tipo: str
+    valor: float
+    unidad: str
+    marca_tiempo: datetime
