@@ -535,7 +535,7 @@ alerta no espera nada; lo demuestra `test_misma_clave_con_la_primera_en_curso_es
 
 `docker compose logs agregador` deja una línea por intento y una final por petición
 ([D37](#log-de-decisiones)). Las de sensores, contrastadas línea a línea con el log del
-servicio inestable, están en [`evidencias/`](evidencias/) (ver abajo). Estas son de Open-Meteo, con un agregador
+servicio inestable, están en [`evidencias/`](evidencias/) (más abajo). Estas son de Open-Meteo, con un agregador
 apuntado a un puerto cerrado para provocar la falla: 3 intentos (D22), espera con jitter
 entre ellos y 502 al rendirse (D20).
 
@@ -552,6 +552,17 @@ Y un id inexistente, que **no** se reintenta (salvaguarda 1, E6):
 [18:09:19.197] r-c0bf open-meteo 1/3 GET /v1/get?id=999999999&language=es -> 400 (205 ms)
 [18:09:19.198] r-c0bf GET /v1/ciudades/999999999/clima -> 404 (0,21 s, 1 intento)
 ```
+
+### Sensores, lado a lado con el log del servicio
+
+En [`evidencias/`](evidencias/) están los dos logs de una corrida con los parámetros del
+enunciado (`--tasa-fallos 0.4 --latencia 5 --semilla 42`): 3 llamadas a
+`GET /v1/sensores`, 162 intentos y 22 respuestas 429, **sin ningún «no respetó
+Retry-After»** en el log del servicio. Después de cada 429, nuestra siguiente petición
+llegó como mínimo 2,003 s después. La [guía](evidencias/README.md) muestra los
+fragmentos comentados: la compuerta frenando a otra lectura, los reintentos de una
+página con timeout y jitter, y una página que se rinde y deja la respuesta incompleta
+con su motivo.
 
 ## Preguntas de análisis (Parte D)
 
