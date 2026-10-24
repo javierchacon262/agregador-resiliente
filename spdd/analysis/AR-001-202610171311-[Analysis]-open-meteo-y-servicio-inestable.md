@@ -11,8 +11,8 @@
 Las secciones 1 a 3 salen de peticiones reales con `curl` (17 de octubre de 2026), de
 leer `servicio_inestable.py` y, para la sección 3, de correrlo en un contenedor. Nada
 está supuesto. Los hallazgos S1–S8 salen de leer el código; los C1–C8, de ejecutarlo.
-La sección 4 es distinta: es una **simulación** (hallazgos M1–M6), y lo que dice hay
-que validarlo con el servicio real cuando exista el código.
+La sección 4 es distinta: es una **simulación** (hallazgos M1–M6). Se validó contra el
+servicio real el 2026-10-24 y coincide (al final de la sección 4).
 
 ## Palabras clave del dominio
 
@@ -192,6 +192,33 @@ datos», ni un sensor con lectura, que es el caso que responde 502/504 (D21).
 | M4 | Con `--latencia 5`, el timeout de 5 s del segundo intento también corta las respuestas lentas, aunque D13 decía que las toleraba: 48 % de completas con 3 → 5 → 8 s, frente a 58 % con 3 → 6 → 8 s | El segundo timeout pasa a 6 s (D19) |
 | M5 | Sin el corte rápido (6 → 8 → 8 s) se completa algo más, pero con latencias de 4 o 5 s no habría ni un timeout y la evidencia nunca mostraría que los manejamos | El primer intento sigue en 3 s (D19) |
 | M6 | Aun con 6 intentos y 45 s, con el enunciado 4 de cada 10 respuestas salen incompletas y la mediana es de 27 s | El dashboard debe mostrar `completo: false` y no puede esperar que sensores responda rápido |
+
+### Validación contra el servicio real (tarea 9)
+
+El 2026-10-24, con el código ya integrado (incluido el turno de envío, D42), se hicieron
+50 llamadas seguidas a `GET /v1/sensores` por configuración, con
+[`pruebas/medir_sensores.py`](../../pruebas/medir_sensores.py):
+
+```bash
+docker compose run --rm pruebas python pruebas/medir_sensores.py --peticiones 50 --etiqueta defecto
+```
+
+Comparado con la fila del modelo que corresponde a lo decidido (6 intentos, timeouts
+3 → 6 → 8 s, plazo de 45 s; tablas 2 y 3):
+
+| Servicio | | Completa | Lista completa | Sin datos | Mediana | p95 | Máx. | Intentos |
+|---|---|---|---|---|---|---|---|---|
+| defecto | modelo | 84,8 % | 97,4 % | 0,5 % | 22 s | 35 s | 45 s | 51 |
+| defecto | **real** | 84,0 % | 98,0 % | 0,0 % | 22 s | 38 s | 43 s | 52 |
+| enunciado | modelo | 58,1 % | 90,9 % | 1,9 % | 27 s | 43 s | 45 s | 57 |
+| enunciado | **real** | 58,0 % | 94,0 % | 0,0 % | 30 s | 41 s | 45 s | 60 |
+
+**El modelo se sostiene**: la completitud coincide casi exacta y la mediana difiere en
+3 s como mucho. Los 3 s de más con el enunciado son el costo del turno de envío, que el
+modelo no tenía. Con 50 llamadas, que no hubiera ninguna sin datos es compatible con el
+1–2 % que predice el modelo. En las 100 llamadas hubo 551 respuestas 429 y ningún «no
+respetó Retry-After» en el log del servicio. Como el canvas pedía corregirse solo si
+esto no coincidía, no cambia.
 
 ## 5. Casos borde que van al canvas (Safeguards)
 

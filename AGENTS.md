@@ -59,8 +59,8 @@ Leer en este orden:
 3. [`spdd/analysis/AR-001-…-[Analysis]-…`](spdd/analysis/): lo que se encontró
    explorando Open-Meteo y leyendo `servicio_inestable.py`. Las secciones 1–3 están
    verificadas con peticiones reales; la 4 es una simulación de los reintentos
-   ([`simulacion_reintentos.py`](spdd/analysis/simulacion_reintentos.py)), que hay
-   que validar con el servicio real cuando exista el código.
+   ([`simulacion_reintentos.py`](spdd/analysis/simulacion_reintentos.py)), validada
+   contra el servicio real en la tarea 9: coincide.
 4. [`spdd/prompt/AR-001-…-[Feat]-agregador-backend.md`](spdd/prompt/): el canvas del
    backend. Su sección Operations es la lista de tareas del código, con el rol de cada
    una (D40).
