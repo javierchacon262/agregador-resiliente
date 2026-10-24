@@ -48,7 +48,9 @@ la validación de la simulación (tareas 7–9, rama `feat/sensores`), con el tu
 (D42) que salió al probar contra el servicio real (C8). El día de la entrega el equipo
 descartó la Parte E (D43). Al día siguiente apareció el grupo de Open Library con su
 API publicada, y la ronda 12 la retomó (D44–D48). Maria Fernanda escribió su canvas y la
-hizo en la rama `feat/parte-e-consumo-cruzado` (tareas 16–19).
+hizo en la rama `feat/parte-e-consumo-cruzado` (tareas 16–19). Para que ellos consuman la
+nuestra, se publica con un túnel rápido de Cloudflare en Docker (D49); el comando está en
+la sección «Parte E» del README. Abrir un túnel público lo corre la persona, no el agente.
 
 Leer en este orden:
 

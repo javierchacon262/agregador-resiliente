@@ -30,7 +30,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 48 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 49 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -167,7 +167,8 @@ del análisis). La 8, también el mismo día, cerró los nueve pendientes que qu
 caché, medición, métricas, evidencia, alcance y roles. La 9 cerró P23 con el texto del
 enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8). En la 11, el
 mismo día de la entrega, el equipo descartó la Parte E. En la 12 (2026-10-24) la retomó, porque
-apareció el grupo de Open Library con su API publicada, y fijó cómo consumirla (D44–D48).
+apareció el grupo de Open Library con su API publicada, y fijó cómo consumirla (D44–D48) y
+cómo publicar la nuestra para ellos (D49).
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -219,6 +220,7 @@ apareció el grupo de Open Library con su API publicada, y fijó cómo consumirl
 | D46 | Hacia el otro grupo, **3 intentos con timeouts de lectura de 4 → 6 → 8 s y plazo de 20 s** por petición, con las reglas de reintento selectivo de D12 y sin compuerta (no manda Retry-After) | 2 intentos de 10 s y plazo de 25 s; los de Open-Meteo (3 → 6 → 8 s) | Su API tardó entre 3,7 y 8 s en las pruebas. El primer intento corta rápido cuando están ágiles y los siguientes toleran los casos lentos, como en D19. El peor caso es 18 s más las esperas, y el plazo de 20 s lo acota | A | 12 |
 | D47 | **Caché de 24 h** para `GET /v1/libros`, con la misma caché de D32 y `Cache-Status` (D33) | Sin caché | El autor de una obra no cambia, y su API tarda segundos y corre en el computador de otro grupo: la caché evita cargarla con la misma pregunta | A | 12 |
 | D48 | La dirección del otro grupo va en **`OTRO_GRUPO_URL`**, con la URL de su túnel como valor por defecto | Sin valor por defecto: la ruta responde 502 si no se configura | Arranca sin configurar nada, como el resto (D28). La URL de un túnel rápido cambia si lo reinician; entonces solo se cambia la variable al arrancar | S, N | 12 |
+| D49 | **Nuestra API se publica para el otro grupo con un túnel rápido de Cloudflare**, que corre en Docker en el computador de Maria Fernanda (`cloudflare/cloudflared:2025.10.0`, en la red del Compose, apuntando a `http://agregador:8000`), y solo mientras ellos prueban. No toca el código ni el Compose: se prende y se apaga aparte | La IP de la red local (`http://192.168.1.24:8000`), que solo sirve en la misma wifi; desplegar el agregador en la nube; ngrok | Los dos grupos no están en la misma red, y es lo mismo que usó el otro grupo, sin cuenta ni configuración. Corre en Docker, como todo lo demás (D16). La URL cambia cada vez que se prende, no tiene garantía de disponibilidad, y mientras está prendido cualquiera con la URL puede usar la API (no hay datos privados). Se prende con un comando que corre la persona, no el agente | S, O | 12 |
 
 ### Riesgos y matices
 
@@ -784,6 +786,32 @@ Su URL es la de un túnel rápido, que cambia si lo reinician. Para apuntar a la
 ```bash
 OTRO_GRUPO_URL=https://la-nueva-url.trycloudflare.com docker compose up -d --wait
 ```
+
+### Cómo consumen ellos nuestra API
+
+A cambio, el grupo de Open Library consume la nuestra. Les mandamos nuestro contrato
+(el `openapi.json` que genera FastAPI) y una URL pública, que sale de un **túnel rápido
+de Cloudflare** que corre en Docker en el computador de Maria Fernanda
+([D49](#log-de-decisiones)):
+
+```bash
+docker compose up -d --wait
+docker run --rm --name tunel-agregador --network agregador-resiliente_default \
+  cloudflare/cloudflared:2025.10.0 tunnel --no-autoupdate --url http://agregador:8000
+```
+
+Entre las líneas que imprime aparece la URL, del tipo
+`https://palabras-al-azar.trycloudflare.com`. La línea `ERR Cannot determine default
+origin certificate path` es normal en un túnel sin cuenta. El túnel vive mientras esa
+terminal siga abierta: **Ctrl+C** lo apaga, y `docker compose down` apaga el agregador.
+
+- La URL **cambia cada vez** que se prende el túnel: hay que mandarles la nueva.
+- El computador tiene que estar **prendido y con internet** mientras ellos prueban.
+- Mientras está prendido, **cualquiera con la URL** puede usar la API. No hay datos
+  privados: clima, sensores de prueba y alertas que se borran al apagar.
+- El 2026-10-24 se publicó en `https://night-activation-evaluations-music.trycloudflare.com`,
+  y se comprobó desde afuera: `/salud`, la búsqueda de Bucaramanga, su clima y `/docs`
+  respondieron bien.
 
 ### Qué le faltó y qué le sobró a su contrato
 
