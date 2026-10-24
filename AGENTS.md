@@ -43,7 +43,10 @@ Con el canvas revisado (PR #6) empezó el código. Javier hizo la base y los rei
 (tareas 1–6, PR #8). Maria Fernanda hizo, en la rama `feat/ciudades-alertas-y-pruebas`,
 el cliente de Open-Meteo, la caché, las rutas de ciudades, las alertas con
 idempotencia, la colección de ciudades y alertas, la medición de latencia y las
-secciones de entrega del README (tareas 10–15). Faltan los sensores (tareas 7–9).
+secciones de entrega del README (tareas 10–15). Javier hizo los sensores, su colección y
+la validación de la simulación (tareas 7–9, rama `feat/sensores`), con el turno de envío
+(D42) que salió al probar contra el servicio real (C8). El día de la entrega el equipo
+descartó la Parte E (D43).
 
 Leer en este orden:
 
@@ -72,7 +75,7 @@ Leer en este orden:
    cada pregunta con sus opciones, se marca una recomendada y se explica qué cambia
    con cada una. Cuando el equipo confirma:
    - se agrega una fila a la tabla «Log de decisiones» del README con el siguiente ID
-     (D43, D44, …), las alternativas descartadas, el porqué, la sección REASONS que
+     (D44, D45, …), las alternativas descartadas, el porqué, la sección REASONS que
      alimenta y la ronda;
    - si cierra un pendiente, se borra de la tabla de pendientes y la decisión dice
      «cierra P0X»;
@@ -106,17 +109,11 @@ Leer en este orden:
 
 ## Próximos pasos, en orden
 
-1. El canvas del backend ya está revisado (PR #6), y el código va por tareas: las 1–6
-   (base común y reintentos) están en `main` desde el PR #8, y las 7–9 (sensores,
-   su colección y la validación de la simulación) van en `feat/sensores`. Maria
-   Fernanda sigue con las 10–15. Pendiente menor: revisar el análisis, y que Maria
-   Fernanda revise su fila en «Integrantes y roles».
-2. Seguir generando el código, tarea por tarea según la sección Operations: primero
-   el backend (D09), después la Parte E y al final el dashboard (D39). Cada integrante
-   se ocupa de las piezas de su rol (D40). Con el backend listo, medir
-   `GET /v1/sensores` contra el servicio real y comparar con la simulación (sección 4
-   del análisis); si no coincide, se corrige primero el canvas.
-3. Antes de la Parte E, escribir su canvas (D41); al final, el del dashboard.
+1. El backend está completo (tareas 1–15). Para la entrega: el comprimido de `main`
+   para Moodle con la lista de chequeo de `entrega/`.
+2. Después de la entrega, si se retoma: el canvas del dashboard (D08, D10) y luego su
+   código. La Parte E no se hace (D43).
+3. Pendiente menor: revisar el análisis y marcarlo como «revisado».
 
 ## Cómo seguir
 

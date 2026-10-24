@@ -17,7 +17,7 @@ afirmación cita la decisión de la que sale; lo que no sale de ninguna está en
 sección «Detalles que fija este canvas», para revisarlo junto con el resto.
 
 Fuera de alcance: el dashboard (D08, D10), que va al final y tendrá su propio canvas,
-y la Parte E (D39, D41), que también tendrá el suyo.
+y la Parte E, que no se hace (D43).
 
 ## R · Requirements (requisitos)
 

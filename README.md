@@ -3,7 +3,24 @@
 Parcial 2 de Sistemas Distribuidos (Escuela de Ingeniería de Sistemas e Informática,
 UIS). Un servicio en FastAPI que consume **Open-Meteo** y un servicio de sensores que
 falla a propósito, y expone una API propia que sigue respondiendo bien aunque sus
-dependencias fallen. Encima va un dashboard.
+dependencias fallen.
+
+> **Para el docente: dónde está cada entregable** (sección 6 del
+> [enunciado](requirements/enunciado/enunciado.md))
+>
+> | Entregable | Dónde |
+> |---|---|
+> | Integrantes y rol de cada uno | [Integrantes y roles](#integrantes-y-roles) |
+> | API elegida | **Open-Meteo**: geocodificación → pronóstico ([D01](#log-de-decisiones), [rutas](#qué-vamos-a-construir)) |
+> | Cómo arrancar el servicio inestable y el agregador | [Cómo arrancar](#cómo-arrancar-el-servicio-inestable-y-el-agregador): `docker compose up -d --wait` |
+> | URL del servicio inestable por variable de entorno | `SERVICIO_INESTABLE_URL` ([cómo apuntar a su propia instancia](#cómo-arrancar-el-servicio-inestable-y-el-agregador)) |
+> | Código fuente y `requirements.txt` | [`agregador/`](agregador/) y [`requirements.txt`](requirements.txt) |
+> | Tabla de latencias con caché y sin ella | [Latencia con caché y sin ella](#latencia-con-caché-y-sin-ella) |
+> | Demostración de idempotencia | [Demostración de idempotencia](#demostración-de-idempotencia) |
+> | Evidencias de los reintentos | [Evidencias](#evidencias-de-los-reintentos) y la carpeta [`evidencias/`](evidencias/) |
+> | Colección de peticiones de prueba | [Pruebas](#pruebas): `docker compose run --rm pruebas` |
+> | Respuestas a las preguntas de la Parte D | [Preguntas de análisis](#preguntas-de-análisis-parte-d) |
+> | Cómo están hechos los reintentos, función por función | [D12 en detalle](#d12-en-detalle-reintentos-función-por-función) |
 
 El requerimiento se trabaja con **SPDD** (Structured Prompt-Driven Development): se
 decide y se escribe la especificación antes de generar código, y cada decisión queda
@@ -12,7 +29,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 42 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 43 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -40,8 +57,7 @@ revisado y el código va en curso; al análisis le falta la revisión del equipo
 | Javier Alexi Chacón Suárez | 2160044 | Servicio inestable con Docker, y resiliencia: reintentos, compuerta y log de evidencias |
 | Maria Fernanda Ruiz Velasquez | 2253689 | Cliente de Open-Meteo, y API propia + pruebas + README: rutas de ciudades y alertas, caché, idempotencia y colección de pruebas |
 
-Los roles salen de [D40](#log-de-decisiones). El dashboard y la Parte E se reparten al
-terminar el backend.
+Los roles salen de [D40](#log-de-decisiones).
 
 ## Qué vamos a construir
 
@@ -147,7 +163,8 @@ abrir el PR de la ronda 5. La 7, el mismo día, cerró la idempotencia y cómo s
 Docker; lo de Docker se verificó con Compose antes de registrarlo (hallazgos C5–C7
 del análisis). La 8, también el mismo día, cerró los nueve pendientes que quedaban:
 caché, medición, métricas, evidencia, alcance y roles. La 9 cerró P23 con el texto del
-enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8).
+enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8). En la 11, el
+mismo día de la entrega, el equipo descartó la Parte E.
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -189,10 +206,11 @@ enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo
 | D36 | Búsqueda sin coincidencias → **200 con lista vacía**; el 404 queda para `/v1/ciudades/{id}` con un id que no existe. Cierra P10 | 404 | Una búsqueda vacía no es un recurso inexistente. Open-Meteo también responde 200 (E1), y el id inexistente da 400, que traducimos a 404 (E6) | R | 8 |
 | D37 | **Log de evidencias en texto**, por stdout, una línea por intento: hora con milisegundos en el formato del servicio, id de la petición recibida, dependencia, intento n/máximo, método y URL, resultado, espera y Retry-After; y una línea final por petición. Los contenedores quedan en UTC, la zona por defecto de la imagen. Cierra P13 | JSON por línea; texto y también JSON | Se lee al lado del log del servicio inestable en la sustentación: con la misma forma de hora y la misma zona se ve, línea a línea, que el intento siguiente salió después de vencer el Retry-After. El id separa las peticiones que van en paralelo (D14) | N | 8 |
 | D38 | **Plantillas propias** de `spdd/template/` para seguir SPDD. Cierra P14 | CLI comunitaria OpenSPDD | Ya existen y funcionan con cualquier agente o a mano, todo lo hecho sigue ese formato y no hay nada que instalar | N | 8 |
-| D39 | **Sí a la Parte E** (consumo cruzado, +10), después del backend y **antes del dashboard**. Lo que pide exactamente se detalla en el canvas. Cierra P15 | Hacerla después del dashboard; no hacerla | Sigue la lógica de D09: suma +10 y el dashboard no suma, así que si falta tiempo, que falte el dashboard | O | 8 |
+| D39 | **Sí a la Parte E** (consumo cruzado, +10), después del backend y **antes del dashboard**. Lo que pide exactamente se detalla en el canvas. Cierra P15. *Ajustada por D43: no se hace.* | Hacerla después del dashboard; no hacerla | Sigue la lógica de D09: suma +10 y el dashboard no suma, así que si falta tiempo, que falte el dashboard | O | 8 |
 | D40 | **Roles**: Javier, servicio inestable con Docker y resiliencia (reintentos, compuerta y log de evidencias); Maria Fernanda, cliente de Open-Meteo y API propia + pruebas + README (rutas de ciudades y alertas, caché, idempotencia y colección). El dashboard y la Parte E se reparten al terminar el backend. Cierra P01 | Javier con Open-Meteo y resiliencia; Javier con resiliencia y API propia | Cada uno es dueño de una dependencia de punta a punta: la resiliencia se prueba contra el servicio inestable, y las rutas de ciudades dependen del cliente de Open-Meteo | O | 8 |
 | D41 | La **Parte E** es la del enunciado: consumir un endpoint de otro grupo usando únicamente su documentación OpenAPI, y reportar en el README qué le faltó o le sobró al contrato. Su canvas se escribe al terminar el backend (D39). Cierra P23 | — | No había nada que decidir: faltaba el texto, y el enunciado ya está en [`requirements/enunciado/`](requirements/enunciado/enunciado.md) | R, O | 9 |
 | D42 | **Turno de envío** al servicio inestable: siguen hasta 4 lecturas en vuelo (D14), pero salen de a una; cada envío retiene el turno hasta que llega su respuesta o pasan 0,25 s (`VENTANA_ENVIO_S`), y un 429 cierra la compuerta antes de soltarlo. Modifica D14 | Una lectura a la vez; dejarlo como estaba y explicarlo en la sustentación | La compuerta frena lo que no ha salido, pero no puede retirar lo que ya va por la red: con 4 a la vez, el servicio registró 15 «no respetó Retry-After» en 6 llamadas. Con el turno, 0 en 79 respuestas 429 y 12 de 12 respuestas completas, con una mediana de 16–19 s (C8). Una lectura a la vez sumaría en serie las respuestas lentas y chocaría con el plazo de 45 s | A, S | 10 |
+| D43 | **No se hace la Parte E.** Modifica D39 | Hacerla con la URL de otro grupo | Elección del equipo el día de la entrega: no hay otro grupo con su agregador disponible para consumirlo. Son +10 de bonificación, así que no restan | O | 11 |
 
 ### Riesgos y matices
 
@@ -395,7 +413,7 @@ cerrarla.
 | S2 | Con D16, la versión de Python la fija la imagen: 3.12.15, fijada por tag y digest (D29). Como no hay plan B (D23), el código no necesita correr fuera de la imagen. |
 | S3 | `servicio_inestable.py` no se modifica: es del docente y se configura por parámetros. |
 
-## Cómo correr lo que ya existe
+## Cómo arrancar el servicio inestable y el agregador
 
 Todo con Docker Compose ([D28](#log-de-decisiones)); no hay instrucciones sin Docker
 ([D23](#log-de-decisiones)). El agregador tiene todas las rutas del backend: `/salud`,
@@ -446,7 +464,8 @@ dos grupos:
 | `test_idempotencia.py` | Las cuatro reglas de D25, incluido el 409 con la primera en curso, y el vencimiento a las 24 h | Nada |
 | `test_open_meteo.py` | El cliente: candidatos, `results` ausente (E1), id inexistente sin reintento (E6), listas paralelas (E7), 3 intentos y 502/504 (D20, D22) | Nada |
 | `test_rutas.py` | Códigos de estado y cabeceras de ciudades y alertas, con un Open-Meteo falso que cuenta las llamadas: los 422 no gastan ninguna | Nada |
-| `test_api_ciudades.py` · `test_api_alertas.py` | La colección: contra el stack levantado y Open-Meteo real | El stack |
+| `test_sensores.py` | La ruta de sensores con un servicio falso: completa, lectura o página que no llega, 502 sin sensores o sin lecturas, 504 por timeouts, cursor repetido y 404 sin reintento (D15, D21) | Nada |
+| `test_api_ciudades.py` · `test_api_alertas.py` · `test_api_sensores.py` | La colección: contra el stack levantado, Open-Meteo real y el servicio inestable | El stack |
 
 Para correr solo las que no necesitan el stack:
 `docker compose run --rm --no-deps -e AGREGADOR_URL= pruebas`. El último reporte está en
@@ -515,8 +534,8 @@ alerta no espera nada; lo demuestra `test_misma_clave_con_la_primera_en_curso_es
 ## Evidencias de los reintentos
 
 `docker compose logs agregador` deja una línea por intento y una final por petición
-([D37](#log-de-decisiones)). Las de sensores, contrastadas con el log del servicio
-inestable, llegan con la tarea 7 del canvas. Estas son de Open-Meteo, con un agregador
+([D37](#log-de-decisiones)). Las de sensores, contrastadas línea a línea con el log del
+servicio inestable, están en [`evidencias/`](evidencias/) (ver abajo). Estas son de Open-Meteo, con un agregador
 apuntado a un puerto cerrado para provocar la falla: 3 intentos (D22), espera con jitter
 entre ellos y 502 al rendirse (D20).
 
@@ -531,7 +550,7 @@ Y un id inexistente, que **no** se reintenta (salvaguarda 1, E6):
 
 ```text
 [18:09:19.197] r-c0bf open-meteo 1/3 GET /v1/get?id=999999999&language=es -> 400 (205 ms)
-[18:09:19.198] r-c0bf GET /v1/ciudades/999999999/clima -> 404 (0,21 s, 1 intentos)
+[18:09:19.198] r-c0bf GET /v1/ciudades/999999999/clima -> 404 (0,21 s, 1 intento)
 ```
 
 ## Preguntas de análisis (Parte D)
@@ -601,8 +620,9 @@ mayor entre ese tiempo y el jitter. En los primeros intentos el jitter es menor 
 (como máximo 0,5 s o 1 s), así que gana el `Retry-After`, y quienes recibieron el mismo
 `Retry-After` vuelven a la vez. Dentro de nuestro agregador eso lo controla la
 **compuerta**, que hace esperar juntas a todas nuestras llamadas al servicio inestable y
-deja salir como máximo 4 lecturas a la vez (D14). Pero si hubiera muchos agregadores
-distintos, convendría sumar un poco de azar encima del `Retry-After`.
+deja como máximo 4 lecturas en vuelo (D14), que además salen de a una por el turno de
+envío (D42): así ninguna sale sin enterarse de un 429 que ya llegó. Pero si hubiera
+muchos agregadores distintos, convendría sumar un poco de azar encima del `Retry-After`.
 
 ### c) ¿Qué tan desactualizados pueden estar los datos de la caché, y cuándo sería inaceptable?
 
@@ -684,9 +704,10 @@ su propia memoria, y no se enterarían de lo que pasa en las demás:
 3. **Compuerta de Retry-After.** Si todas las réplicas salen a internet por la misma IP,
    un 429 del servicio inestable bloquea a todas, pero solo se entera la réplica que lo
    recibió. Las demás seguirían llamando antes de que venzan los 2 s, y el log del
-   servicio las mostraría como «no respetó Retry-After». La compuerta tendría que ser
-   compartida, o cada réplica tendría que estar preparada para recibir un 429 en
-   cualquier momento.
+   servicio las mostraría como «no respetó Retry-After». Ya nos pasó dentro de una sola
+   réplica, con peticiones en vuelo (hallazgo C8), y lo resolvió el turno de envío
+   (D42); entre réplicas, la compuerta y el turno tendrían que ser compartidos, o cada
+   réplica tendría que estar preparada para recibir un 429 en cualquier momento.
 4. **Reintentos y plazos.** Si el balanceador también reintenta por su cuenta, sus
    reintentos se multiplican con los nuestros: por ejemplo, 3 del balanceador por 6
    nuestros hacia el servicio inestable dan hasta 18 intentos por llamada. Habría que
@@ -705,8 +726,9 @@ réplica caída y deje de mandarle peticiones.
 Las instrucciones para cualquier persona o agente están en [`AGENTS.md`](AGENTS.md).
 En resumen: el canvas del backend está revisado y el código va tarea por tarea según su
 sección Operations. Ya están la base y los reintentos (tareas 1–6) y la parte de
-Open-Meteo, caché, alertas, colección y latencias (tareas 10–15). Faltan los sensores y
-su colección (tareas 7–9); después siguen la Parte E y al final el dashboard (D09, D39).
+Open-Meteo, caché, alertas, colección y latencias (tareas 10–15), y los sensores con su
+colección y la validación de la simulación (tareas 7–9). La Parte E no se hace (D43); el
+dashboard queda para después de la entrega (D09).
 
 ## Fuentes
 

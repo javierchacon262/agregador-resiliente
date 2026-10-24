@@ -89,5 +89,7 @@ class MiddlewareEvidencia:
             if metricas is not None:
                 metricas.registrar_latencia(ruta, duracion)
             nota = f" {estado.nota}" if estado.nota else ""
-            intentos = f", {estado.intentos} intentos" if estado.intentos else ""
+            intentos = ""
+            if estado.intentos:
+                intentos = f", {estado.intentos} intento{'s' if estado.intentos > 1 else ''}"
             escribir(f"{scope['method']} {scope['path']} -> {codigo}{nota} ({segundos(duracion)}{intentos})")
