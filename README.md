@@ -12,7 +12,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 41 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 42 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -146,7 +146,8 @@ M1–M6), y confirmó D07 y los supuestos S1–S3. La 6 la propuso el equipo des
 abrir el PR de la ronda 5. La 7, el mismo día, cerró la idempotencia y cómo se arma
 Docker; lo de Docker se verificó con Compose antes de registrarlo (hallazgos C5–C7
 del análisis). La 8, también el mismo día, cerró los nueve pendientes que quedaban:
-caché, medición, métricas, evidencia, alcance y roles.
+caché, medición, métricas, evidencia, alcance y roles. La 9 cerró P23 con el texto del
+enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8).
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -163,7 +164,7 @@ caché, medición, métricas, evidencia, alcance y roles.
 | D11 | Repo en `javierchacon262/agregador-resiliente`, **público** | Privado con colaboradores; organización del grupo | Elección del equipo. Riesgo aceptado: otros grupos pueden ver el código antes de la entrega | S | 2 |
 | D12 | Reintentos **a mano**, con **cada función explicada en este log** ([detalle abajo](#d12-en-detalle-reintentos-función-por-función)) | tenacity; reintentos del transporte de httpx (solo reintentan errores de conexión, no 503 ni 429) | Es lo que más pesa en la evaluación (30 puntos) y cualquiera del grupo debe poder explicarlo | A | 3 |
 | D13 | Timeout de lectura **adaptativo: 3 s → 5 s → 8 s** según el intento | 3 s fijo; 5–6 s fijo | El primer intento corta rápido las respuestas lentas y los siguientes toleran la latencia (4 s, o 5 s del docente). *Ajustada por D19 a 3 → 6 → 8 s: el de 5 s no toleraba los 5 s.* | A | 3 |
-| D14 | Lecturas con **máximo 4 a la vez + compuerta compartida de Retry-After** | Secuencial; bajo demanda desde el navegador | El bloqueo por 429 es por IP: sin compuerta, las llamadas en vuelo aparecerían como «no respetó Retry-After» en el log del docente | A, S | 3 |
+| D14 | Lecturas con **máximo 4 a la vez + compuerta compartida de Retry-After** | Secuencial; bajo demanda desde el navegador | El bloqueo por 429 es por IP: sin compuerta, las llamadas en vuelo aparecerían como «no respetó Retry-After» en el log del docente. *Ajustada por D42: la compuerta no alcanzaba a las peticiones que ya habían salido; se agrega un turno de envío.* | A, S | 3 |
 | D15 | Fallo parcial: **devolver siempre lo obtenido**, marcado como incompleto | Páginas todo o nada y lecturas parciales; todo o nada | Más disponibilidad para el dashboard. El caso sin datos (riesgo R1) lo cierra D21 | A | 3 |
 | D16 | **Docker para todo lo que se ejecute**: agregador, servicio inestable, pruebas y medición de latencia | Solo `venv` local (lo que asumía el enunciado y lo que había recomendado el agente); Docker opcional | Según el equipo, la reproducibilidad y la desplegabilidad del prototipo son temas importantes de la evaluación. Cómo se arma queda en P16–P21. Ver el riesgo R4 | S, N | 4 |
 | D17 | Máximo **6 intentos** por llamada al servicio inestable, configurable. Cierra P08 junto con D18 | 3 (la propuesta de P08), 4 y 5 | En la simulación, con 3 intentos solo sale completa el 8,9 % de las respuestas de `GET /v1/sensores` (0,9 % con los parámetros del enunciado); con 6, el 85 % (59 %), por unos 6 s más de mediana. Las páginas van en serie y una perdida se lleva las siguientes (M1, M2) | A | 5 |
@@ -191,6 +192,7 @@ caché, medición, métricas, evidencia, alcance y roles.
 | D39 | **Sí a la Parte E** (consumo cruzado, +10), después del backend y **antes del dashboard**. Lo que pide exactamente se detalla en el canvas. Cierra P15 | Hacerla después del dashboard; no hacerla | Sigue la lógica de D09: suma +10 y el dashboard no suma, así que si falta tiempo, que falte el dashboard | O | 8 |
 | D40 | **Roles**: Javier, servicio inestable con Docker y resiliencia (reintentos, compuerta y log de evidencias); Maria Fernanda, cliente de Open-Meteo y API propia + pruebas + README (rutas de ciudades y alertas, caché, idempotencia y colección). El dashboard y la Parte E se reparten al terminar el backend. Cierra P01 | Javier con Open-Meteo y resiliencia; Javier con resiliencia y API propia | Cada uno es dueño de una dependencia de punta a punta: la resiliencia se prueba contra el servicio inestable, y las rutas de ciudades dependen del cliente de Open-Meteo | O | 8 |
 | D41 | La **Parte E** es la del enunciado: consumir un endpoint de otro grupo usando únicamente su documentación OpenAPI, y reportar en el README qué le faltó o le sobró al contrato. Su canvas se escribe al terminar el backend (D39). Cierra P23 | — | No había nada que decidir: faltaba el texto, y el enunciado ya está en [`requirements/enunciado/`](requirements/enunciado/enunciado.md) | R, O | 9 |
+| D42 | **Turno de envío** al servicio inestable: siguen hasta 4 lecturas en vuelo (D14), pero salen de a una; cada envío retiene el turno hasta que llega su respuesta o pasan 0,25 s (`VENTANA_ENVIO_S`), y un 429 cierra la compuerta antes de soltarlo. Modifica D14 | Una lectura a la vez; dejarlo como estaba y explicarlo en la sustentación | La compuerta frena lo que no ha salido, pero no puede retirar lo que ya va por la red: con 4 a la vez, el servicio registró 15 «no respetó Retry-After» en 6 llamadas. Con el turno, 0 en 79 respuestas 429 y 12 de 12 respuestas completas, con una mediana de 16–19 s (C8). Una lectura a la vez sumaría en serie las respuestas lentas y chocaría con el plazo de 45 s | A, S | 10 |
 
 ### Riesgos y matices
 
@@ -204,13 +206,13 @@ caché, medición, métricas, evidencia, alcance y roles.
 
 ### D12 en detalle: reintentos, función por función
 
-> **Las funciones 1–6 describen el código de
-> [`agregador/resiliencia.py`](agregador/resiliencia.py)**, que tiene la misma
-> numeración; sus pruebas están en
-> [`pruebas/test_resiliencia.py`](pruebas/test_resiliencia.py). Las 7 y 8 todavía son
-> diseño (tarea 7 del canvas). Si el código cambia, esta sección cambia con él (regla 4
-> de AGENTS.md). Los números salen de variables de entorno, con los valores por
-> defecto de la tabla de Norms del canvas.
+> **Las ocho funciones describen el código real**, con la misma numeración: la 1–6 en
+> [`agregador/resiliencia.py`](agregador/resiliencia.py) y la 7–8 en
+> [`agregador/clientes/sensores.py`](agregador/clientes/sensores.py). Sus pruebas están
+> en [`pruebas/test_resiliencia.py`](pruebas/test_resiliencia.py) y
+> [`pruebas/test_sensores.py`](pruebas/test_sensores.py). Si el código cambia, esta
+> sección cambia con él (regla 4 de AGENTS.md). Los números salen de variables de
+> entorno, con los valores por defecto de la tabla de Norms del canvas.
 
 Así se ve el comportamiento en un caso con 503, 429 y éxito:
 
@@ -255,8 +257,9 @@ sequenceDiagram
 - *Qué hace:* backoff exponencial con **jitter completo**:
   `espera = azar(0, mín(TOPE, BASE · 2^intento))`, y si vino Retry-After,
   `espera = máx(retry_after, espera)`.
-- *Ejemplo* con los valores por defecto, BASE = 0,5 s y TOPE = 8 s: intento 0 → entre 0 y 0,5 s; intento 1 →
-  0–1 s; intento 2 → 0–2 s; intento 3 → 0–4 s; de ahí en adelante, 0–8 s.
+- *Ejemplo* con los valores por defecto, BASE = 0,5 s y TOPE = 8 s: intento 0 → entre
+  0 y 0,5 s; intento 1 → 0–1 s; intento 2 → 0–2 s; intento 3 → 0–4 s; de ahí en
+  adelante, 0–8 s.
 - *Por qué exponencial:* cada fallo sugiere que la dependencia está más cargada, y
   esperar más le da aire.
 - *Por qué jitter:* si muchos clientes fallan a la vez y esperan lo mismo, vuelven
@@ -287,6 +290,15 @@ sequenceDiagram
   llamadas, no solo la que lo recibió. Sin compuerta, las otras llamadas en vuelo
   saldrían antes de tiempo y el log del docente las mostraría como «no respetó
   Retry-After» (D14).
+- `turno`: el **turno de envío** (D42). Las peticiones al servicio salen de a una, y
+  cada una retiene el turno hasta que llega su respuesta o pasan 0,25 s
+  (`VENTANA_ENVIO_S`). El servicio decide el 429 antes de dormir, así que vuelve en
+  milisegundos y cierra la compuerta antes de que salga la siguiente; una respuesta
+  lenta suelta el turno al vencer la ventana, y las lecturas siguen en paralelo.
+- *Por qué el turno:* la compuerta frena lo que todavía no salió, pero no puede
+  retirar una petición que ya va por la red. Sin el turno, con 4 lecturas a la vez,
+  cada 429 alcanzaba a otras peticiones en vuelo: 15 «no respetó» en 6 llamadas. Con
+  el turno, 0 en 79 respuestas 429 (hallazgo C8 del análisis).
 - Solo la usa el servicio inestable; Open-Meteo no manda Retry-After (D22).
 
 **6. `llamar_con_reintentos(cliente, método, url, *, politica, fecha_limite, compuerta, metricas, params)`**
@@ -296,15 +308,18 @@ El ciclo que une todo; toda llamada saliente pasa por aquí:
 
 ```text
 para cada intento desde 0 hasta política.máximo - 1:
-    si la compuerta está cerrada:
-        si abre después de la fecha límite → rendirse por plazo
-        escribir la espera en la evidencia y esperar a que abra
-    hacer la petición con timeout de lectura mín(timeout_para(intento), lo que queda),
-        dentro de asyncio.timeout(lo que queda): ningún intento pasa del plazo
+    con el turno de envío (si hay compuerta):
+        si la compuerta está cerrada:
+            si abre después de la fecha límite → rendirse por plazo
+            escribir la espera en la evidencia y esperar a que abra
+        lanzar la petición con timeout de lectura mín(timeout_para(intento), lo que
+            queda), dentro de asyncio.timeout(lo que queda): ningún intento pasa del plazo;
+            si responde 429 con Retry-After, cerrar ahí mismo la compuerta
+        retener el turno hasta que responda o pasen 0,25 s
+    esperar la respuesta
     si respondió algo no reintentable:
         2xx o 4xx (400, 404…) → devolverlo; la ruta decide qué responder (404 → 404)
         otro 5xx              → rendirse sin reintentar (502)
-    si es un 429 con Retry-After y hay compuerta → cerrarla hasta ahora + Retry-After
     si era el último intento → rendirse
     calcular la espera; si ahora + espera pasa de la fecha límite → rendirse por plazo
     escribir la línea de evidencia y dormir la espera
@@ -333,29 +348,37 @@ rendirse = lanzar ErrorDependencia(causa, intentos enviados):
 - *Pruebas:* `pruebas/test_resiliencia.py` lo comprueba sin red, con un servidor y un
   reloj falsos: 503 → 200; Retry-After respetado; 400 y 404 sin reintento; conexión
   caída reintentada; timeouts agotados → 504; 503 agotados → 502; plazo agotado → 504;
-  otro 5xx → 502 sin reintento; la compuerta frena a otra llamada, y una línea de
-  evidencia por intento.
+  otro 5xx → 502 sin reintento; la compuerta frena a otra llamada; el turno no deja
+  salir a otra llamada antes de saber del 429 (esa prueba falla sin el turno), y una
+  línea de evidencia por intento.
 
-**7. `recorrer_paginas()`** → lista de sensores y si quedó completa *(diseño; tarea 7)*
+**7. `recorrer_paginas(cliente, *, politica, compuerta, fecha_limite, metricas)`** →
+`ResultadoPaginas`: sensores, si quedó completa, el motivo y la causa del corte
 - *Qué hace:* pide `/sensores`, luego `/sensores?cursor=siguiente`, hasta que
   `siguiente` sea `null`. Cada página pasa por `llamar_con_reintentos`, con la fecha
-  límite de la petición.
+  límite de la petición, y se valida con el modelo `PaginaSensores`.
 - *Salvaguarda:* si un cursor se repite, corta, para que el recorrido termine siempre.
-- *Si una página falla del todo:* devuelve lo obtenido con `completo: false` (D15).
-  Las páginas son el eslabón débil: sin el cursor de una no se puede pedir la
-  siguiente (hallazgo M2), y por eso el máximo es de 6 intentos (D17).
+- *Si una página falla del todo:* devuelve lo obtenido con `completo: false` y el
+  motivo, por ejemplo «la página 3 no respondió (503)» (D15). Un 400 (cursor que el
+  servicio no reconoce) o una página que no cumple el modelo también cortan. Las
+  páginas son el eslabón débil: sin el cursor de una no se puede pedir la siguiente
+  (hallazgo M2), y por eso el máximo es de 6 intentos (D17).
 
-**8. `leer_lecturas(ids)`** → lecturas, con `null` y motivo en las que fallaron *(diseño; tarea 7)*
-- *Qué hace:* pide las lecturas con un máximo de 4 a la vez (un semáforo de asyncio).
-  Cada una pasa por la compuerta y por `llamar_con_reintentos`, con la misma fecha
-  límite que las páginas.
+**8. `leer_lecturas(cliente, ids, *, concurrencia, …)`** → una `ResultadoLectura` por
+sensor, en el mismo orden: la lectura, o `None` con el motivo y la causa
+- *Qué hace:* pide las lecturas con un máximo de 4 a la vez (un semáforo de asyncio,
+  D14). Cada una pasa por la compuerta, el turno de envío y `llamar_con_reintentos`,
+  con la misma fecha límite que las páginas. Un 404 se respeta («el sensor no existe»)
+  y no se reintenta.
 - *Por qué 4:* alcanza para que 23 lecturas no tarden un minuto, sin disparar decenas
   de peticiones a la vez contra un servicio que ya está fallando.
 
-**Cómo responde `GET /v1/sensores`** (D15, D21)
-- Al menos una lectura → **200** con la lista; si faltan páginas o lecturas,
-  `completo: false` y el motivo (por ejemplo, plazo agotado o intentos agotados).
-- Ningún sensor, o sensores sin ninguna lectura → **502 o 504**, según D20.
+**Cómo responde `GET /v1/sensores`** ([`rutas/sensores.py`](agregador/rutas/sensores.py); D15, D21)
+- Al menos una lectura → **200** con la lista. Si faltan páginas o lecturas,
+  `completo: false` y el motivo, por ejemplo «3 de 23 sensores sin lectura»; cada
+  sensor sin lectura dice el suyo.
+- Ningún sensor, o sensores sin ninguna lectura → **502 o 504**. Si se acabó el plazo
+  en cualquier parte es 504; si no, manda la causa del último fallo (D20).
 
 ## Decisiones pendientes
 
@@ -375,15 +398,16 @@ cerrarla.
 ## Cómo correr lo que ya existe
 
 Todo con Docker Compose ([D28](#log-de-decisiones)); no hay instrucciones sin Docker
-([D23](#log-de-decisiones)). El agregador ya tiene `/salud`, `/v1/metricas`, los
-reintentos, las rutas de ciudades y clima y las de alertas; la de sensores llega con su
-tarea del canvas. El contrato completo está en <http://localhost:8000/docs>.
+([D23](#log-de-decisiones)). El agregador tiene todas las rutas del backend: `/salud`,
+ciudades y clima, sensores, alertas y `/v1/metricas`. El contrato completo está en
+<http://localhost:8000/docs>.
 
 ```bash
 docker compose up -d --wait            # agregador (:8000) y servicio inestable (:9000)
 curl localhost:8000/salud
 curl 'localhost:8000/v1/ciudades?nombre=San%20Jos%C3%A9&pais=CO'
 curl -i 'localhost:8000/v1/ciudades/3688465/clima?dias=3'     # mirar Cache-Status
+curl localhost:8000/v1/sensores
 curl localhost:8000/v1/metricas
 docker compose run --rm pruebas        # la colección de pruebas (D26)
 docker compose run --rm pruebas python pruebas/medir_latencia.py   # tabla de latencias (D34)

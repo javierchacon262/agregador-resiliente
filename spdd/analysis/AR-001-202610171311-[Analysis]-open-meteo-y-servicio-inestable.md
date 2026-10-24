@@ -5,12 +5,12 @@
 | ID | AR-001 |
 | Tipo | Análisis (paso 3 de SPDD) |
 | Estado | Exploración hecha; **falta la revisión del equipo** antes de pasar al canvas |
-| Fecha | 2026-10-17; sección 4 y hallazgos C5–C7 agregados el 2026-10-23 (rondas 5 y 7) |
+| Fecha | 2026-10-17; sección 4 y hallazgos C5–C8 agregados el 2026-10-23 (rondas 5, 7 y 10) |
 | Historia | [AR-001 Story](../../requirements/AR-001-202610171311-[Story]-agregador-resiliente.md) |
 
 Las secciones 1 a 3 salen de peticiones reales con `curl` (17 de octubre de 2026), de
 leer `servicio_inestable.py` y, para la sección 3, de correrlo en un contenedor. Nada
-está supuesto. Los hallazgos S1–S8 salen de leer el código; los C1–C7, de ejecutarlo.
+está supuesto. Los hallazgos S1–S8 salen de leer el código; los C1–C8, de ejecutarlo.
 La sección 4 es distinta: es una **simulación** (hallazgos M1–M6), y lo que dice hay
 que validarlo con el servicio real cuando exista el código.
 
@@ -106,7 +106,8 @@ Verificado el 2026-10-17 corriendo `servicio_inestable.py` sin modificar en un
 contenedor `python:3.12-slim` (Docker 29.7.2), con una instancia en el host por
 defecto y otra con `--host 0.0.0.0`. C5–C7 se verificaron el 2026-10-23 con Docker
 29.9.1, Compose 5.6.0 y `python:3.12.15-slim-trixie`, en un Compose de prueba que no
-está en el repo.
+está en el repo. C8 salió el mismo día al correr el agregador real contra el servicio,
+con el Compose del repo.
 
 | # | Hallazgo | Consecuencia para nosotros |
 |---|---|---|
@@ -117,6 +118,7 @@ está en el repo.
 | C5 | Los parámetros del servicio se pueden pasar desde Compose con variables interpoladas en `command` (`"${TASA_FALLOS:-0.30}"`): con `TASA_FALLOS=0.4 LATENCIA=5 docker compose up`, `/config` devolvió 0.4 y 5.0 | El docente cambia los parámetros sin editar archivos (D28). |
 | C6 | Desde un contenedor que no está en el Compose, `host.docker.internal` **no resuelve** en Linux («Name or service not known»). Con `--add-host host.docker.internal:host-gateway` sí llega a la instancia publicada en el puerto 9000 de la máquina, y las peticiones aparecen con la IP del gateway (`172.18.0.1`) | El Compose del agregador lleva `extra_hosts` (D30). La IP única sigue haciendo necesaria la compuerta (C3). |
 | C7 | Un healthcheck con `python -c "import urllib.request; urllib.request.urlopen('…/salud', timeout=2)"` funciona en la imagen slim, y `docker compose up --wait` vuelve cuando el servicio está sano. Los chequeos **no** aparecen en el log del servicio, que solo registra las rutas `/sensores` | Los healthchecks no ensucian la evidencia de reintentos (D31). Con `PYTHONUNBUFFERED=1` sí salen los mensajes de arranque (C2). |
+| C8 | Con 4 lecturas a la vez (D14), cada 429 alcanzaba a otras peticiones que ya habían salido: el servicio las recibe 1 o 2 ms después y las registra como «429 (no respetó Retry-After)». Fueron 15 en 6 llamadas a `/v1/sensores`, con 38 respuestas 429. La compuerta frena lo que todavía no salió, pero no puede retirar lo que ya va por la red | Turno de envío (D42): las peticiones salen de a una y cada una retiene el turno hasta su respuesta o 0,25 s. Medido después: 0 «no respetó» en 79 respuestas 429, y 12 de 12 respuestas completas. |
 
 ## 4. Simulación de los reintentos (ronda 5)
 

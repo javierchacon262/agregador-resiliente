@@ -72,7 +72,7 @@ Leer en este orden:
    cada pregunta con sus opciones, se marca una recomendada y se explica qué cambia
    con cada una. Cuando el equipo confirma:
    - se agrega una fila a la tabla «Log de decisiones» del README con el siguiente ID
-     (D42, D43, …), las alternativas descartadas, el porqué, la sección REASONS que
+     (D43, D44, …), las alternativas descartadas, el porqué, la sección REASONS que
      alimenta y la ronda;
    - si cierra un pendiente, se borra de la tabla de pendientes y la decisión dice
      «cierra P0X»;
@@ -106,9 +106,12 @@ Leer en este orden:
 
 ## Próximos pasos, en orden
 
-1. El canvas del backend ya está revisado (PR #6). Pendiente menor: revisar el
-   análisis, y que Maria Fernanda revise su fila en «Integrantes y roles».
-2. Generar el código, tarea por tarea según la sección Operations: primero
+1. El canvas del backend ya está revisado (PR #6), y el código va por tareas: las 1–6
+   (base común y reintentos) están en `main` desde el PR #8, y las 7–9 (sensores,
+   su colección y la validación de la simulación) van en `feat/sensores`. Maria
+   Fernanda sigue con las 10–15. Pendiente menor: revisar el análisis, y que Maria
+   Fernanda revise su fila en «Integrantes y roles».
+2. Seguir generando el código, tarea por tarea según la sección Operations: primero
    el backend (D09), después la Parte E y al final el dashboard (D39). Cada integrante
    se ocupa de las piezas de su rol (D40). Con el backend listo, medir
    `GET /v1/sensores` contra el servicio real y comparar con la simulación (sección 4
