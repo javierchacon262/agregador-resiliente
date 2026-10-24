@@ -221,3 +221,6 @@ __marimo__/
 
 # Comprimido de la entrega (entrega/README.md)
 entrega/*.zip
+
+# Los logs de evidencias son un entregable (sección 6 del enunciado)
+!evidencias/*.log

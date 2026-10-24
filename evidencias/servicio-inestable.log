@@ -1,0 +1,176 @@
+Servicio inestable en http://0.0.0.0:9000  (documentación en /docs)
+Parámetros: {'tasa_fallos': 0.4, 'tasa_429': 0.1, 'tasa_lentitud': 0.2, 'latencia_s': 5.0, 'retry_after_s': 2, 'semilla': 42, 'tam_pagina': 5, 'num_sensores': 23}
+[15:39:20.372]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:39:23.578]      172.19.0.2 GET /sensores -> 503
+[15:39:23.665]      172.19.0.2 GET /sensores -> 503
+[15:39:25.376]      172.19.0.2 GET /sensores -> 200
+[15:39:25.444]      172.19.0.2 GET /sensores -> 200
+[15:39:25.447]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:39:28.644]      172.19.0.2 GET /sensores -> 503
+[15:39:29.607]      172.19.0.2 GET /sensores -> 429 (Retry-After: 2)
+[15:39:30.449]      172.19.0.2 GET /sensores -> 200
+[15:39:31.611]      172.19.0.2 GET /sensores -> 503
+[15:39:32.167]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:39:37.169]      172.19.0.2 GET /sensores -> 200
+[15:39:37.172]      172.19.0.2 GET /sensores -> 503
+[15:39:37.579]      172.19.0.2 GET /sensores -> 200
+[15:39:37.583]      172.19.0.2 GET /sensores -> 503
+[15:39:37.600]      172.19.0.2 GET /sensores -> 200
+[15:39:37.603]      172.19.0.2 GET /sensores -> 429 (Retry-After: 2)
+[15:39:39.608]      172.19.0.2 GET /sensores -> 200
+[15:39:39.610]      172.19.0.2 GET /sensores/S-001/lectura -> 503
+[15:39:39.612]      172.19.0.2 GET /sensores/S-002/lectura -> 503
+[15:39:39.615]      172.19.0.2 GET /sensores/S-003/lectura -> 200
+[15:39:39.617]      172.19.0.2 GET /sensores/S-004/lectura -> 429 (Retry-After: 2)
+[15:39:41.621]      172.19.0.2 GET /sensores/S-005/lectura -> 429 (Retry-After: 2)
+[15:39:43.626]      172.19.0.2 GET /sensores/S-001/lectura -> 200
+[15:39:43.629]      172.19.0.2 GET /sensores/S-002/lectura -> 200
+[15:39:43.633]      172.19.0.2 GET /sensores/S-004/lectura -> 200
+[15:39:43.635]      172.19.0.2 GET /sensores/S-005/lectura -> 503
+[15:39:43.638]      172.19.0.2 GET /sensores/S-006/lectura -> 200
+[15:39:43.641]      172.19.0.2 GET /sensores/S-007/lectura -> 200
+[15:39:43.643]      172.19.0.2 GET /sensores/S-008/lectura -> 200
+[15:39:43.645]      172.19.0.2 GET /sensores/S-009/lectura -> 429 (Retry-After: 2)
+[15:39:45.650]      172.19.0.2 GET /sensores/S-010/lectura -> 503
+[15:39:45.652]      172.19.0.2 GET /sensores/S-011/lectura -> 503
+[15:39:45.654]      172.19.0.2 GET /sensores/S-005/lectura -> 429 (Retry-After: 2)
+[15:39:47.658]      172.19.0.2 GET /sensores/S-009/lectura -> 503
+[15:39:47.660]      172.19.0.2 GET /sensores/S-011/lectura -> 503
+[15:39:47.662]      172.19.0.2 GET /sensores/S-010/lectura -> 503
+[15:39:47.664]      172.19.0.2 GET /sensores/S-005/lectura -> 200
+[15:39:47.667]      172.19.0.2 GET /sensores/S-012/lectura -> 503
+[15:39:47.849]      172.19.0.2 GET /sensores/S-011/lectura -> 503
+[15:39:47.957]      172.19.0.2 GET /sensores/S-010/lectura -> 503
+[15:39:47.998]      172.19.0.2 GET /sensores/S-012/lectura -> 200
+[15:39:48.001]      172.19.0.2 GET /sensores/S-013/lectura -> lenta (5.0 s)
+[15:39:48.254]      172.19.0.2 GET /sensores/S-010/lectura -> lenta (5.0 s)
+[15:39:48.619]      172.19.0.2 GET /sensores/S-009/lectura -> 503
+[15:39:48.655]      172.19.0.2 GET /sensores/S-011/lectura -> 200
+[15:39:48.658]      172.19.0.2 GET /sensores/S-014/lectura -> 200
+[15:39:48.660]      172.19.0.2 GET /sensores/S-015/lectura -> 200
+[15:39:48.662]      172.19.0.2 GET /sensores/S-016/lectura -> 503
+[15:39:49.068]      172.19.0.2 GET /sensores/S-016/lectura -> 429 (Retry-After: 2)
+[15:39:51.071]      172.19.0.2 GET /sensores/S-009/lectura -> 503
+[15:39:51.074]      172.19.0.2 GET /sensores/S-016/lectura -> 503
+[15:39:51.165]      172.19.0.2 GET /sensores/S-013/lectura -> 503
+[15:39:51.549]      172.19.0.2 GET /sensores/S-013/lectura -> 200
+[15:39:51.552]      172.19.0.2 GET /sensores/S-017/lectura -> 503
+[15:39:51.899]      172.19.0.2 GET /sensores/S-016/lectura -> 200
+[15:39:51.902]      172.19.0.2 GET /sensores/S-018/lectura -> 200
+[15:39:51.905]      172.19.0.2 GET /sensores/S-019/lectura -> 503
+[15:39:51.912]      172.19.0.2 GET /sensores/S-019/lectura -> 503
+[15:39:52.051]      172.19.0.2 GET /sensores/S-017/lectura -> 200
+[15:39:52.054]      172.19.0.2 GET /sensores/S-020/lectura -> 200
+[15:39:52.056]      172.19.0.2 GET /sensores/S-021/lectura -> 503
+[15:39:52.269]      172.19.0.2 GET /sensores/S-021/lectura -> 503
+[15:39:52.613]      172.19.0.2 GET /sensores/S-009/lectura -> 200
+[15:39:52.616]      172.19.0.2 GET /sensores/S-022/lectura -> 429 (Retry-After: 2)
+[15:39:53.002]      172.19.0.2 GET /sensores/S-013/lectura -> 200
+[15:39:53.256]      172.19.0.2 GET /sensores/S-010/lectura -> 200
+[15:39:54.620]      172.19.0.2 GET /sensores/S-021/lectura -> 429 (Retry-After: 2)
+[15:39:56.624]      172.19.0.2 GET /sensores/S-019/lectura -> 503
+[15:39:56.627]      172.19.0.2 GET /sensores/S-023/lectura -> 200
+[15:39:56.630]      172.19.0.2 GET /sensores/S-022/lectura -> 503
+[15:39:56.632]      172.19.0.2 GET /sensores/S-021/lectura -> 429 (Retry-After: 2)
+[15:39:58.635]      172.19.0.2 GET /sensores/S-022/lectura -> 503
+[15:39:58.638]      172.19.0.2 GET /sensores/S-019/lectura -> 200
+[15:39:58.641]      172.19.0.2 GET /sensores/S-021/lectura -> 200
+[15:39:59.960]      172.19.0.2 GET /sensores/S-022/lectura -> 429 (Retry-After: 2)
+[15:40:03.565]      172.19.0.2 GET /sensores/S-022/lectura -> 200
+[15:40:03.570]      172.19.0.2 GET /sensores -> 200
+[15:40:03.573]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:40:07.044]      172.19.0.2 GET /sensores -> 503
+[15:40:07.396]      172.19.0.2 GET /sensores -> 503
+[15:40:08.141]      172.19.0.2 GET /sensores -> 200
+[15:40:08.143]      172.19.0.2 GET /sensores -> 503
+[15:40:08.160]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:40:08.575]      172.19.0.2 GET /sensores -> 200
+[15:40:13.162]      172.19.0.2 GET /sensores -> 200
+[15:40:13.166]      172.19.0.2 GET /sensores -> 200
+[15:40:13.168]      172.19.0.2 GET /sensores -> 503
+[15:40:13.501]      172.19.0.2 GET /sensores -> 200
+[15:40:13.504]      172.19.0.2 GET /sensores/S-001/lectura -> 503
+[15:40:13.507]      172.19.0.2 GET /sensores/S-002/lectura -> 200
+[15:40:13.509]      172.19.0.2 GET /sensores/S-003/lectura -> 200
+[15:40:13.511]      172.19.0.2 GET /sensores/S-004/lectura -> 429 (Retry-After: 2)
+[15:40:15.514]      172.19.0.2 GET /sensores/S-005/lectura -> 503
+[15:40:15.516]      172.19.0.2 GET /sensores/S-006/lectura -> 429 (Retry-After: 2)
+[15:40:17.521]      172.19.0.2 GET /sensores/S-001/lectura -> 200
+[15:40:17.524]      172.19.0.2 GET /sensores/S-004/lectura -> 200
+[15:40:17.526]      172.19.0.2 GET /sensores/S-005/lectura -> 429 (Retry-After: 2)
+[15:40:19.530]      172.19.0.2 GET /sensores/S-006/lectura -> 200
+[15:40:19.533]      172.19.0.2 GET /sensores/S-007/lectura -> 429 (Retry-After: 2)
+[15:40:21.537]      172.19.0.2 GET /sensores/S-008/lectura -> 503
+[15:40:21.539]      172.19.0.2 GET /sensores/S-005/lectura -> 429 (Retry-After: 2)
+[15:40:23.543]      172.19.0.2 GET /sensores/S-009/lectura -> 200
+[15:40:23.545]      172.19.0.2 GET /sensores/S-007/lectura -> 503
+[15:40:23.547]      172.19.0.2 GET /sensores/S-008/lectura -> 503
+[15:40:23.549]      172.19.0.2 GET /sensores/S-005/lectura -> 200
+[15:40:23.552]      172.19.0.2 GET /sensores/S-010/lectura -> 200
+[15:40:23.555]      172.19.0.2 GET /sensores/S-011/lectura -> 503
+[15:40:23.557]      172.19.0.2 GET /sensores/S-012/lectura -> 200
+[15:40:23.559]      172.19.0.2 GET /sensores/S-013/lectura -> 503
+[15:40:23.576]      172.19.0.2 GET /sensores/S-008/lectura -> 503
+[15:40:23.598]      172.19.0.2 GET /sensores/S-011/lectura -> 200
+[15:40:23.600]      172.19.0.2 GET /sensores/S-014/lectura -> 503
+[15:40:23.629]      172.19.0.2 GET /sensores/S-014/lectura -> lenta (5.0 s)
+[15:40:23.883]      172.19.0.2 GET /sensores/S-013/lectura -> 503
+[15:40:24.019]      172.19.0.2 GET /sensores/S-007/lectura -> 503
+[15:40:24.149]      172.19.0.2 GET /sensores/S-007/lectura -> 200
+[15:40:24.152]      172.19.0.2 GET /sensores/S-015/lectura -> 503
+[15:40:24.522]      172.19.0.2 GET /sensores/S-013/lectura -> 429 (Retry-After: 2)
+[15:40:26.527]      172.19.0.2 GET /sensores/S-015/lectura -> 200
+[15:40:26.530]      172.19.0.2 GET /sensores/S-008/lectura -> 200
+[15:40:26.533]      172.19.0.2 GET /sensores/S-013/lectura -> 429 (Retry-After: 2)
+[15:40:28.536]      172.19.0.2 GET /sensores/S-016/lectura -> 503
+[15:40:28.539]      172.19.0.2 GET /sensores/S-017/lectura -> 200
+[15:40:28.541]      172.19.0.2 GET /sensores/S-018/lectura -> 503
+[15:40:28.631]      172.19.0.2 GET /sensores/S-014/lectura -> 200
+[15:40:28.634]      172.19.0.2 GET /sensores/S-019/lectura -> 200
+[15:40:28.636]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:28.676]      172.19.0.2 GET /sensores/S-018/lectura -> 200
+[15:40:28.679]      172.19.0.2 GET /sensores/S-021/lectura -> 503
+[15:40:28.895]      172.19.0.2 GET /sensores/S-021/lectura -> 429 (Retry-After: 2)
+[15:40:30.899]      172.19.0.2 GET /sensores/S-016/lectura -> 503
+[15:40:30.901]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:30.902]      172.19.0.2 GET /sensores/S-013/lectura -> 503
+[15:40:30.905]      172.19.0.2 GET /sensores/S-021/lectura -> 200
+[15:40:30.907]      172.19.0.2 GET /sensores/S-022/lectura -> lenta (5.0 s)
+[15:40:31.499]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:31.563]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:31.855]      172.19.0.2 GET /sensores/S-016/lectura -> 200
+[15:40:31.858]      172.19.0.2 GET /sensores/S-023/lectura -> 503
+[15:40:32.333]      172.19.0.2 GET /sensores/S-023/lectura -> 503
+[15:40:32.421]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:33.227]      172.19.0.2 GET /sensores/S-023/lectura -> 503
+[15:40:34.003]      172.19.0.2 GET /sensores/S-020/lectura -> 503
+[15:40:34.130]      172.19.0.2 GET /sensores/S-022/lectura -> 200
+[15:40:34.317]      172.19.0.2 GET /sensores/S-023/lectura -> 200
+[15:40:35.909]      172.19.0.2 GET /sensores/S-022/lectura -> 200
+[15:40:36.704]      172.19.0.2 GET /sensores/S-013/lectura -> 429 (Retry-After: 2)
+[15:40:38.708]      172.19.0.2 GET /sensores -> 200
+[15:40:38.711]      172.19.0.2 GET /sensores -> 200
+[15:40:38.714]      172.19.0.2 GET /sensores -> lenta (5.0 s)
+[15:40:41.990]      172.19.0.2 GET /sensores -> 503
+[15:40:42.068]      172.19.0.2 GET /sensores -> 503
+[15:40:43.715]      172.19.0.2 GET /sensores -> 200
+[15:40:43.760]      172.19.0.2 GET /sensores -> 503
+[15:40:43.887]      172.19.0.2 GET /sensores -> 429 (Retry-After: 2)
+[15:40:49.828]      172.19.0.2 GET /sensores -> 503
+[15:40:49.832]      172.19.0.2 GET /sensores/S-001/lectura -> 200
+[15:40:49.836]      172.19.0.2 GET /sensores/S-002/lectura -> 200
+[15:40:49.839]      172.19.0.2 GET /sensores/S-003/lectura -> 503
+[15:40:49.842]      172.19.0.2 GET /sensores/S-004/lectura -> 200
+[15:40:49.845]      172.19.0.2 GET /sensores/S-005/lectura -> 200
+[15:40:49.847]      172.19.0.2 GET /sensores/S-006/lectura -> 503
+[15:40:49.849]      172.19.0.2 GET /sensores/S-007/lectura -> 503
+[15:40:49.851]      172.19.0.2 GET /sensores/S-008/lectura -> 200
+[15:40:49.854]      172.19.0.2 GET /sensores/S-009/lectura -> 200
+[15:40:49.856]      172.19.0.2 GET /sensores/S-010/lectura -> 429 (Retry-After: 2)
+[15:40:51.861]      172.19.0.2 GET /sensores/S-007/lectura -> 200
+[15:40:51.864]      172.19.0.2 GET /sensores/S-006/lectura -> lenta (5.0 s)
+[15:40:52.118]      172.19.0.2 GET /sensores/S-003/lectura -> lenta (5.0 s)
+[15:40:52.368]      172.19.0.2 GET /sensores/S-010/lectura -> 503
+[15:40:52.581]      172.19.0.2 GET /sensores/S-010/lectura -> 200
+[15:40:56.866]      172.19.0.2 GET /sensores/S-006/lectura -> 200
+[15:40:57.120]      172.19.0.2 GET /sensores/S-003/lectura -> 200
