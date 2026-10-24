@@ -21,6 +21,7 @@ dependencias fallen.
 > | Colección de peticiones de prueba | [Pruebas](#pruebas): `docker compose run --rm pruebas` |
 > | Respuestas a las preguntas de la Parte D | [Preguntas de análisis](#preguntas-de-análisis-parte-d) |
 > | Cómo están hechos los reintentos, función por función | [D12 en detalle](#d12-en-detalle-reintentos-función-por-función) |
+> | Parte E: consumo cruzado y qué le faltó o sobró al contrato | [Parte E](#parte-e-consumo-cruzado) |
 
 El requerimiento se trabaja con **SPDD** (Structured Prompt-Driven Development): se
 decide y se escribe la especificación antes de generar código, y cada decisión queda
@@ -29,7 +30,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 43 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 48 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -74,6 +75,7 @@ API propia (todo bajo `/v1`, salvo la salud):
 | `GET /v1/sensores` | Todos los sensores con su lectura, tolerando fallos | Servicio inestable (paginación + lecturas) |
 | `POST /v1/alertas` | Crea una alerta de umbral (201 + `Location`); idempotente con `Idempotency-Key` obligatoria | Ninguna |
 | `GET /v1/alertas` y `GET /v1/alertas/{id}` | Lista las alertas o trae una | Ninguna |
+| `GET /v1/libros?titulo=` | Una obra y su autor (Parte E, D44): caché de 24 h y `Cache-Status` | La API del grupo de Open Library |
 | `GET /v1/metricas` | Reintentos por causa, caché, latencias y estado de las dependencias, para el panel de resiliencia | Ninguna |
 | `GET /salud` | Comprobación de vida del agregador | Ninguna |
 | `GET /dashboard` | Dashboard estático; se hace al final, después de la Parte E (D39) | Nuestra propia API |
@@ -164,7 +166,8 @@ Docker; lo de Docker se verificó con Compose antes de registrarlo (hallazgos C5
 del análisis). La 8, también el mismo día, cerró los nueve pendientes que quedaban:
 caché, medición, métricas, evidencia, alcance y roles. La 9 cerró P23 con el texto del
 enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8). En la 11, el
-mismo día de la entrega, el equipo descartó la Parte E.
+mismo día de la entrega, el equipo descartó la Parte E. En la 12 (2026-10-24) la retomó, porque
+apareció el grupo de Open Library con su API publicada, y fijó cómo consumirla (D44–D48).
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -210,7 +213,12 @@ mismo día de la entrega, el equipo descartó la Parte E.
 | D40 | **Roles**: Javier, servicio inestable con Docker y resiliencia (reintentos, compuerta y log de evidencias); Maria Fernanda, cliente de Open-Meteo y API propia + pruebas + README (rutas de ciudades y alertas, caché, idempotencia y colección). El dashboard y la Parte E se reparten al terminar el backend. Cierra P01 | Javier con Open-Meteo y resiliencia; Javier con resiliencia y API propia | Cada uno es dueño de una dependencia de punta a punta: la resiliencia se prueba contra el servicio inestable, y las rutas de ciudades dependen del cliente de Open-Meteo | O | 8 |
 | D41 | La **Parte E** es la del enunciado: consumir un endpoint de otro grupo usando únicamente su documentación OpenAPI, y reportar en el README qué le faltó o le sobró al contrato. Su canvas se escribe al terminar el backend (D39). Cierra P23 | — | No había nada que decidir: faltaba el texto, y el enunciado ya está en [`requirements/enunciado/`](requirements/enunciado/enunciado.md) | R, O | 9 |
 | D42 | **Turno de envío** al servicio inestable: siguen hasta 4 lecturas en vuelo (D14), pero salen de a una; cada envío retiene el turno hasta que llega su respuesta o pasan 0,25 s (`VENTANA_ENVIO_S`), y un 429 cierra la compuerta antes de soltarlo. Modifica D14 | Una lectura a la vez; dejarlo como estaba y explicarlo en la sustentación | La compuerta frena lo que no ha salido, pero no puede retirar lo que ya va por la red: con 4 a la vez, el servicio registró 15 «no respetó Retry-After» en 6 llamadas. Con el turno, 0 en 79 respuestas 429 y 12 de 12 respuestas completas, con una mediana de 16–19 s (C8). Una lectura a la vez sumaría en serie las respuestas lentas y chocaría con el plazo de 45 s | A, S | 10 |
-| D43 | **No se hace la Parte E.** Modifica D39 | Hacerla con la URL de otro grupo | Elección del equipo el día de la entrega: no hay otro grupo con su agregador disponible para consumirlo. Son +10 de bonificación, así que no restan | O | 11 |
+| D43 | **No se hace la Parte E.** Modifica D39 *Ajustada por D44: sí se hace.* | Hacerla con la URL de otro grupo | Elección del equipo el día de la entrega: no hay otro grupo con su agregador disponible para consumirlo. Son +10 de bonificación, así que no restan | O | 11 |
+| D44 | **Sí se hace la Parte E**, consumiendo la API del grupo de **Open Library** (`GET /v1/libros?titulo=`), solo con su `openapi.json`. Modifica D43 | Mantener D43 y no hacerla | Apareció un grupo con su agregador publicado por un túnel de Cloudflare, y su API respondió en las pruebas. Son +10 de bonificación. A cambio, ellos consumen la nuestra por otro túnel | R, O | 12 |
+| D45 | Nuestra ruta es **`GET /v1/libros?titulo=`**: devuelve la obra y su autor tal como los da el otro grupo, con nuestros nombres | `GET /v1/consumo-cruzado/libros?titulo=` | Un recurso «libros» se entiende solo en `/docs`; que venga de otro grupo es un detalle de implementación, igual que Open-Meteo detrás de `/v1/ciudades` | R, S | 12 |
+| D46 | Hacia el otro grupo, **3 intentos con timeouts de lectura de 4 → 6 → 8 s y plazo de 20 s** por petición, con las reglas de reintento selectivo de D12 y sin compuerta (no manda Retry-After) | 2 intentos de 10 s y plazo de 25 s; los de Open-Meteo (3 → 6 → 8 s) | Su API tardó entre 3,7 y 8 s en las pruebas. El primer intento corta rápido cuando están ágiles y los siguientes toleran los casos lentos, como en D19. El peor caso es 18 s más las esperas, y el plazo de 20 s lo acota | A | 12 |
+| D47 | **Caché de 24 h** para `GET /v1/libros`, con la misma caché de D32 y `Cache-Status` (D33) | Sin caché | El autor de una obra no cambia, y su API tarda segundos y corre en el computador de otro grupo: la caché evita cargarla con la misma pregunta | A | 12 |
+| D48 | La dirección del otro grupo va en **`OTRO_GRUPO_URL`**, con la URL de su túnel como valor por defecto | Sin valor por defecto: la ruta responde 502 si no se configura | Arranca sin configurar nada, como el resto (D28). La URL de un túnel rápido cambia si lo reinician; entonces solo se cambia la variable al arrancar | S, N | 12 |
 
 ### Riesgos y matices
 
@@ -465,7 +473,8 @@ dos grupos:
 | `test_open_meteo.py` | El cliente: candidatos, `results` ausente (E1), id inexistente sin reintento (E6), listas paralelas (E7), 3 intentos y 502/504 (D20, D22) | Nada |
 | `test_rutas.py` | Códigos de estado y cabeceras de ciudades y alertas, con un Open-Meteo falso que cuenta las llamadas: los 422 no gastan ninguna | Nada |
 | `test_sensores.py` | La ruta de sensores con un servicio falso: completa, lectura o página que no llega, 502 sin sensores o sin lecturas, 504 por timeouts, cursor repetido y 404 sin reintento (D15, D21) | Nada |
-| `test_api_ciudades.py` · `test_api_alertas.py` · `test_api_sensores.py` | La colección: contra el stack levantado, Open-Meteo real y el servicio inestable | El stack |
+| `test_otro_grupo.py` | La Parte E con la API del otro grupo falsa: sus campos, 404 sin reintento, timeouts 4 → 6 → 8 s, su 502/504 como 502, la página HTML de Cloudflare, caché y 422 sin llamarlos (D44–D47) | Nada |
+| `test_api_ciudades.py` · `test_api_alertas.py` · `test_api_sensores.py` · `test_api_libros.py` | La colección: contra el stack levantado, Open-Meteo real, el servicio inestable y la API real del otro grupo | El stack |
 
 Para correr solo las que no necesitan el stack:
 `docker compose run --rm --no-deps -e AGREGADOR_URL= pruebas`. El último reporte está en
@@ -732,14 +741,93 @@ su propia memoria, y no se enterarían de lo que pasa en las demás:
 Lo que **no** cambia: `GET /salud` sirve tal cual para que el balanceador detecte una
 réplica caída y deje de mandarle peticiones.
 
+## Parte E: consumo cruzado
+
+Consumimos la API del **grupo de Open Library** usando **solo su contrato OpenAPI**
+([D44](#log-de-decisiones)), guardado tal como lo recibimos en
+[`requirements/parte-e/openapi-grupo-open-library.json`](requirements/parte-e/openapi-grupo-open-library.json).
+Su API corre en el computador de ellos, publicada con un túnel de Cloudflare. El canvas
+está en [`spdd/prompt/`](spdd/prompt/) (tareas 16–19).
+
+**Qué usamos:** su `GET /v1/libros?titulo=`, que busca la obra y encadena con su autor.
+Nuestra ruta **`GET /v1/libros?titulo=`** ([D45](#log-de-decisiones)) le pregunta y
+responde lo mismo, con sus mismos nombres de campo:
+
+```console
+$ curl -i 'localhost:8000/v1/libros?titulo=cien%20a%C3%B1os%20de%20soledad'
+HTTP/1.1 200 OK
+cache-status: agregador-libros; fwd=uri-miss; stored
+
+{"obra":"Cien años de soledad","autor":"Gabriel García Márquez","clave_autor":"OL27363A","nombre_personal_real":"García Márquez, Gabriel","fecha_nacimiento":"1927-03-06"}
+```
+
+```text
+[23:28:11.962] r-0fc3 otro-grupo 1/3 GET /v1/libros?titulo=cien+a%C3%B1os+de+soledad -> 200 (3181 ms)
+[23:28:11.963] r-0fc3 GET /v1/libros -> 200 (3,18 s, 1 intento)
+[23:28:11.996] r-b578 GET /v1/libros -> 200 (0,00 s)
+[23:28:13.700] r-4b11 otro-grupo 1/3 GET /v1/libros?titulo=xqzwvtkjhgf -> 404 (1657 ms)
+[23:28:13.701] r-4b11 GET /v1/libros -> 404 (1,66 s, 1 intento)
+```
+
+La segunda línea de `GET /v1/libros` salió de la caché: 0,00 s en vez de 3,18 s.
+
+**Cómo lo tratamos:** como una dependencia más, con la misma función de reintentos de
+D12: 3 intentos con timeouts de 4 → 6 → 8 s y un plazo de 20 s
+([D46](#log-de-decisiones)), y caché de 24 h ([D47](#log-de-decisiones)). Su 404 es
+nuestro 404, sin reintentar. Su 502 o 504 son nuestro 502, porque sí respondieron; el
+504 queda para cuando no responden a tiempo (D20). Si su servidor no está, solo falla
+esta ruta.
+
+Su URL es la de un túnel rápido, que cambia si lo reinician. Para apuntar a la nueva
+([D48](#log-de-decisiones)):
+
+```bash
+OTRO_GRUPO_URL=https://la-nueva-url.trycloudflare.com docker compose up -d --wait
+```
+
+### Qué le faltó y qué le sobró a su contrato
+
+Lo que **le faltó**, comprobado en su `openapi.json`:
+
+1. **No dice dónde está la API.** No tiene `servers`, así que la URL hubo que pedirla
+   aparte. Un contrato que se usa «solo» debería traerla.
+2. **No explica qué devuelve `GET /v1/libros` cuando hay varias obras.** Responde una
+   sola (`ResumenObra`, no una lista), pero no dice cuál elige: la primera, la más
+   popular, la coincidencia exacta… La ruta tampoco tiene `description`.
+3. **Los errores no tienen cuerpo documentado.** El 404, el 502 y el 504 solo tienen un
+   texto; no se sabe qué JSON traen ni si traen alguno. Para tratarlos tuvimos que fiarnos
+   solo del código.
+4. **No hay ejemplos.** Ningún esquema ni respuesta trae `example`. Con un ejemplo de
+   `ResumenObra` se entiende el formato sin tener que llamarla.
+5. **`fecha_nacimiento` es texto sin formato.** Recibimos `"1927-03-06"`, pero el
+   contrato no dice si siempre es AAAA-MM-DD; por eso la pasamos tal cual, como texto.
+6. **No dice cuánto tarda ni si tiene caché.** En nuestras pruebas tardó entre 1,7 y
+   8 s; sin esa información, quien la consuma no sabe qué timeout ponerle. Elegimos 4 →
+   6 → 8 s a partir de lo que medimos (D46).
+7. **La idempotencia de `POST /v1/alertas` no queda clara.** `Idempotency-Key` aparece
+   como opcional, y solo hay 201 y 422: no dice qué pasa si falta la clave, si se repite
+   con otro cuerpo o si llega mientras la primera sigue en curso. Tampoco hay forma de
+   leer una alerta creada (no hay `GET /v1/alertas` ni cabecera `Location`).
+
+Lo que **le sobró**: poco. Las descripciones automáticas en inglés de FastAPI
+(«Successful Response», «Validation Error») conviven con las suyas en español. Y
+`nombre_personal_real` repite al autor en otro orden («García Márquez, Gabriel»), sin
+que el contrato explique para qué sirve tenerlo aparte.
+
+Algo que **no es del contrato, sino de cómo lo publicaron**: la primera vez que lo
+probamos, su túnel devolvió un **504 en HTML** de Cloudflare, no el 504 JSON que promete
+el contrato. Ellos lo arreglaron, y desde entonces respondió bien. Nuestro cliente
+trata esa página como `respuesta_invalida` (502), y hay una prueba para ese caso.
+
 ## Cómo continuar
 
 Las instrucciones para cualquier persona o agente están en [`AGENTS.md`](AGENTS.md).
 En resumen: el canvas del backend está revisado y el código va tarea por tarea según su
 sección Operations. Ya están la base y los reintentos (tareas 1–6) y la parte de
 Open-Meteo, caché, alertas, colección y latencias (tareas 10–15), y los sensores con su
-colección y la validación de la simulación (tareas 7–9). La Parte E no se hace (D43); el
-dashboard queda para después de la entrega (D09).
+colección y la validación de la simulación (tareas 7–9). La Parte E se retomó (D44) y
+tiene su propio canvas (tareas 16–19). El dashboard queda para después de la entrega
+(D09).
 
 ## Fuentes
 

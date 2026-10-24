@@ -119,3 +119,24 @@ Lo que se ajustó al depurar:
   pruebas fallan con 502/504, que es justo lo que debe responder el agregador.
 - **Aviso de Starlette:** `TestClient` avisa que usar `httpx` con él está obsoleto. No
   afecta a las pruebas; no se cambió `requirements.txt`, que es de la tarea 1.
+
+## Parte E: consumo cruzado (tareas 16–19, 2026-10-24)
+
+| Campo | Valor |
+|---|---|
+| Rama | `feat/parte-e-consumo-cruzado`, sobre `main` en `f1d52c8` |
+| Resultado | **153 pruebas en verde** contra el stack: las 132 de antes y 21 nuevas |
+
+| Archivo | Pruebas | Tipo |
+|---|---|---|
+| `test_otro_grupo.py` | 19 | Unitarias: la API del otro grupo falsa, según su contrato |
+| `test_api_libros.py` | 2 | Colección: contra su API real (200, o 502/504 si su túnel está caído) |
+
+- **Contra su API real:** «Cien años de soledad» respondió 200 en 3,2 s y la segunda vez
+  salió de la caché en 0,00 s; un título inexistente dio 404 en 1,7 s, con un solo
+  intento; el título vacío dio 422 sin llamarlos.
+- **Las pruebas detectan errores de verdad:** cambiar los timeouts a 3 → 6 → 8 s y
+  quitar la validación del título hecho de espacios hacen fallar las pruebas que
+  corresponden. Después se restauró el código.
+- **Las 132 pruebas anteriores siguen pasando:** la Parte E no cambió el comportamiento
+  de las demás rutas.

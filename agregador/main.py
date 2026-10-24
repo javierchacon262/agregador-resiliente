@@ -13,7 +13,7 @@ from agregador.idempotencia import AlmacenIdempotencia
 from agregador.metricas import RegistroMetricas
 from agregador.modelos import CuerpoErrorDependencia, Salud
 from agregador.resiliencia import CompuertaRetryAfter, ErrorDependencia, Politica
-from agregador.rutas import alertas, ciudades, metricas, sensores
+from agregador.rutas import alertas, ciudades, libros, metricas, sensores
 
 
 @asynccontextmanager
@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     # Cachés en memoria con su TTL (D32); los nombres van en Cache-Status (D33).
     estado.cache_ciudades = CacheTTL("agregador-ciudades", config.ttl_ciudades_s)
     estado.cache_pronostico = CacheTTL("agregador-pronostico", config.ttl_pronostico_s)
+    estado.cache_libros = CacheTTL("agregador-libros", config.ttl_libros_s)  # D47
     # Alertas y claves de idempotencia, también en memoria (D24, D25).
     estado.alertas = alertas.RegistroAlertas()
     estado.idempotencia = AlmacenIdempotencia(config.ttl_idempotencia_s)
@@ -42,6 +43,13 @@ async def lifespan(app: FastAPI):
     estado.politica_open_meteo = Politica(
         dependencia="open_meteo", etiqueta="open-meteo", maximo=config.maximo_intentos_open_meteo, **comunes
     )
+    # Parte E: sus propios timeouts, 4 → 6 → 8 s, porque su API tarda segundos (D46).
+    estado.politica_otro_grupo = Politica(
+        dependencia="otro_grupo",
+        etiqueta="otro-grupo",
+        maximo=config.maximo_intentos_otro_grupo,
+        **(comunes | {"timeouts_lectura": config.timeouts_lectura_otro_grupo_s}),
+    )
     # Un cliente por dependencia, que reutiliza conexiones. Cada llamada lleva su propio
     # timeout; este es solo el de respaldo.
     respaldo = httpx.Timeout(max(config.timeouts_lectura_s), connect=config.timeout_conexion_s)
@@ -49,7 +57,9 @@ async def lifespan(app: FastAPI):
         httpx.AsyncClient(base_url=config.servicio_inestable_url, timeout=respaldo) as sensores,
         httpx.AsyncClient(base_url=config.open_meteo_geocoding_url, timeout=respaldo) as geocoding,
         httpx.AsyncClient(base_url=config.open_meteo_forecast_url, timeout=respaldo) as pronostico,
+        httpx.AsyncClient(base_url=config.otro_grupo_url, timeout=respaldo) as otro,
     ):
+        estado.cliente_otro_grupo = otro
         estado.cliente_sensores = sensores
         estado.cliente_geocoding = geocoding
         estado.cliente_pronostico = pronostico
@@ -70,6 +80,7 @@ app.add_middleware(MiddlewareEvidencia)
 app.include_router(ciudades.router)
 app.include_router(sensores.router)
 app.include_router(alertas.router)
+app.include_router(libros.router)
 app.include_router(metricas.router)
 
 
