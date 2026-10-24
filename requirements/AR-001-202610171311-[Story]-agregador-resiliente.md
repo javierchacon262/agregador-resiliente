@@ -18,8 +18,8 @@ ejecutando nuestras peticiones de prueba contra **su propia instancia** del serv
 inestable, con parámetros que no conocemos.
 
 Encima de la API va un dashboard ([D08](../README.md#log-de-decisiones)) que no
-suma puntos en la rúbrica, por eso se construye después del backend y de la Parte E
-([D09, D39](../README.md#log-de-decisiones)).
+suma puntos en la rúbrica, por eso se construye después del backend
+([D09](../README.md#log-de-decisiones)). La Parte E no se hace ([D43](../README.md#log-de-decisiones)).
 
 ## Historias
 
@@ -135,7 +135,7 @@ entrega sin instalar dependencias en mi máquina ([D16](../README.md#log-de-deci
   línea por intento, en el formato de [D37](../README.md#log-de-decisiones).
 - `docker stop` termina el agregador limpio, sin esperar los 10 s de gracia.
 
-### HU7 · Dashboard (al final, después del backend y de la Parte E)
+### HU7 · Dashboard (al final, después del backend)
 
 - Página estática en `/dashboard` servida por el mismo FastAPI, con Chart.js, que
   solo habla con nuestra API ([D08](../README.md#log-de-decisiones)).
@@ -172,7 +172,7 @@ entrega sin instalar dependencias en mi máquina ([D16](../README.md#log-de-deci
 | Caché con TTL y medición de latencia | 10 | HU2, HU6 |
 | Idempotencia demostrada | 10 | HU4 |
 | Preguntas de análisis | 15 | README |
-| Consumo cruzado (opcional) | +10 | Parte E, se hace ([D39, D41](../README.md#log-de-decisiones)) |
+| Consumo cruzado (opcional) | +10 | Parte E, no se hace ([D43](../README.md#log-de-decisiones)) |
 
 La reproducibilidad y la desplegabilidad (HU8) no aparecen en esta tabla del
 enunciado. El equipo las incluye porque, según el equipo, son temas importantes de la

@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Comprimido de la entrega (entrega/README.md)
+entrega/*.zip

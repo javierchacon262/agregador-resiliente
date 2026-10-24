@@ -38,6 +38,7 @@ class Configuracion:
     backoff_base_s: float
     backoff_tope_s: float
     concurrencia_lecturas: int
+    ventana_envio_s: float
     ttl_ciudades_s: float
     ttl_pronostico_s: float
     ttl_idempotencia_s: float
@@ -57,6 +58,7 @@ def cargar_configuracion() -> Configuracion:
         backoff_base_s=_numero("BACKOFF_BASE_S", 0.5),  # D12
         backoff_tope_s=_numero("BACKOFF_TOPE_S", 8),  # D12
         concurrencia_lecturas=_entero("CONCURRENCIA_LECTURAS", 4),  # D14
+        ventana_envio_s=_numero("VENTANA_ENVIO_S", 0.25),  # C8: turno de envío al servicio inestable
         ttl_ciudades_s=_numero("TTL_CIUDADES_S", 86400),  # D32
         ttl_pronostico_s=_numero("TTL_PRONOSTICO_S", 900),  # D32
         ttl_idempotencia_s=_numero("TTL_IDEMPOTENCIA_S", 86400),  # D25

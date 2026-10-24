@@ -4,10 +4,10 @@ Son el contrato que muestra /docs (Parte B del enunciado). Los de cada ruta se a
 con su tarea; aquí están los de la base común.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Salud(BaseModel):
@@ -59,3 +59,118 @@ class Metricas(BaseModel):
     dependencias: dict[Literal["servicio_inestable", "open_meteo"], MetricasDependencia]
     cache: MetricasCache
     latencia_ms: dict[str, LatenciaRuta] = Field(description="Por plantilla de ruta, p. ej. /v1/alertas/{id}")
+
+
+# Ciudades y clima (HU1, HU2) ─────────────────────────────────────────────────────
+
+
+class Ciudad(BaseModel):
+    """Un candidato de la búsqueda, o la ciudad resuelta por id (D05, D07)."""
+
+    id: int = Field(examples=[3688465])
+    nombre: str = Field(examples=["Bucaramanga"])
+    departamento: str | None = Field(default=None, description="Primer nivel administrativo", examples=["Santander"])
+    pais: str | None = Field(default=None, examples=["Colombia"])
+    codigo_pais: str | None = Field(default=None, examples=["CO"])
+    latitud: float = Field(examples=[7.125])
+    longitud: float = Field(examples=[-73.11895])
+    poblacion: int | None = Field(default=None, examples=[581130])
+
+
+class ClimaActual(BaseModel):
+    hora: datetime = Field(description="Hora local de la ciudad, sin zona", examples=["2026-10-23T13:00"])
+    temperatura_c: float = Field(examples=[28.6])
+    humedad_pct: float = Field(examples=[57])
+    codigo_tiempo: int = Field(description="Código WMO, p. ej. 3 = nublado, 51 = llovizna (E12)", examples=[3])
+    viento_kmh: float = Field(examples=[7.5])
+
+
+class DiaPronostico(BaseModel):
+    """Un día del pronóstico. Open-Meteo puede dejar un valor en null si no lo tiene."""
+
+    fecha: date = Field(examples=["2026-10-23"])
+    maxima_c: float | None = Field(examples=[28.7])
+    minima_c: float | None = Field(examples=[21.0])
+    prob_lluvia_pct: float | None = Field(examples=[84])
+
+
+class RespuestaClima(BaseModel):
+    ciudad: Ciudad
+    zona_horaria: str = Field(examples=["America/Bogota"])
+    actual: ClimaActual
+    dias: list[DiaPronostico]
+
+
+# Alertas (HU4) ───────────────────────────────────────────────────────────────────
+
+
+class Objetivo(BaseModel):
+    # El id de una ciudad es un número y el de un sensor un texto («S-001»); los dos se
+    # guardan como texto para que 3688465 y "3688465" sean el mismo cuerpo (D25).
+    model_config = ConfigDict(extra="forbid", coerce_numbers_to_str=True)
+
+    tipo: Literal["ciudad", "sensor"]
+    id: str = Field(min_length=1, max_length=64, examples=["3688465"])
+
+
+class NuevaAlerta(BaseModel):
+    """Un umbral registrado: solo se guarda, no se evalúa (D24)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    objetivo: Objetivo
+    variable: Literal["temperatura", "humedad", "viento", "prob_lluvia", "ruido", "co2"]
+    condicion: Literal["mayor_que", "menor_que"]
+    umbral: float = Field(allow_inf_nan=False, examples=[30])
+
+
+class Alerta(NuevaAlerta):
+    id: str = Field(examples=["a-0001"])
+    creada: datetime = Field(description="UTC")
+
+
+# Sensores ─────────────────────────────────────────────────────────────────────────
+
+
+class Lectura(BaseModel):
+    valor: float = Field(examples=[24.3])
+    unidad: str = Field(examples=["°C"])
+    marca_tiempo: datetime
+
+
+class SensorConLectura(BaseModel):
+    id: str = Field(examples=["S-001"])
+    tipo: str = Field(examples=["temperatura"])
+    ubicacion: str = Field(examples=["Edificio A"])
+    lectura: Lectura | None = Field(description="null si no se pudo leer; el porqué va en `motivo`")
+    motivo: str | None = Field(default=None, examples=["sin respuesta (503)"])
+
+
+class RespuestaSensores(BaseModel):
+    """Todos los sensores con su lectura, aunque el servicio falle (D15, D21)."""
+
+    sensores: list[SensorConLectura]
+    completo: bool = Field(description="false si faltó alguna página o alguna lectura")
+    motivo: str | None = Field(default=None, examples=["3 de 23 sensores sin lectura"])
+
+
+# Respuestas del servicio inestable: se validan antes de usarlas (Parte A del enunciado).
+
+
+class SensorServicio(BaseModel):
+    id: str
+    tipo: str
+    ubicacion: str
+
+
+class PaginaSensores(BaseModel):
+    sensores: list[SensorServicio]
+    siguiente: str | None
+
+
+class LecturaServicio(BaseModel):
+    sensor_id: str
+    tipo: str
+    valor: float
+    unidad: str
+    marca_tiempo: datetime

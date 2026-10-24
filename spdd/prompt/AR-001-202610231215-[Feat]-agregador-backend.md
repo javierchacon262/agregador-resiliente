@@ -17,7 +17,7 @@ afirmación cita la decisión de la que sale; lo que no sale de ninguna está en
 sección «Detalles que fija este canvas», para revisarlo junto con el resto.
 
 Fuera de alcance: el dashboard (D08, D10), que va al final y tendrá su propio canvas,
-y la Parte E (D39, D41), que también tendrá el suyo.
+y la Parte E, que no se hace (D43).
 
 ## R · Requirements (requisitos)
 
@@ -81,13 +81,13 @@ cachés y métricas. Se pierden al reiniciar el contenedor.
 1. **Reintentos a mano en un solo módulo** (D12): las ocho funciones de «D12 en
    detalle» del README, con las reglas de D17–D22: 6 intentos hacia el servicio
    inestable y 3 hacia Open-Meteo; timeouts 3 → 6 → 8 s; jitter completo; Retry-After
-   respetado; compuerta compartida solo para el servicio inestable; plazo por
-   petición; 502/504 al rendirse.
+   respetado; compuerta compartida y turno de envío solo para el servicio inestable
+   (D14, D42); plazo por petición; 502/504 al rendirse.
 2. **Fecha límite por petición** (D18): la fija cada ruta al recibir la petición y la
    pasa a todas sus llamadas salientes.
 3. **Concurrencia con asyncio** (D14): un `httpx.AsyncClient` por dependencia, creado
    en el `lifespan` de FastAPI y cerrado al apagar; las lecturas van con un semáforo
-   de 4.
+   de 4, pero salen de a una por el turno de envío (D42).
 4. **Fallo parcial** (D15, D21): `GET /v1/sensores` devuelve lo obtenido con
    `completo: false`; con cero sensores o cero lecturas, 502/504.
 5. **Caché a mano** (D32, D33): diccionario + `time.monotonic()`; `Cache-Status`
@@ -118,8 +118,10 @@ agregador/
     ciudades.py  sensores.py  alertas.py  metricas.py
 pruebas/
   test_resiliencia.py   unitarias, con httpx.MockTransport
+  test_sensores.py      la ruta de sensores con un servicio falso
   test_api_*.py         contra el stack levantado (D26)
   medir_latencia.py     D34
+  medir_sensores.py     tarea 9: /v1/sensores contra el servicio real
 Dockerfile  docker-compose.yml  requirements.txt  .dockerignore  pytest.ini
 ```
 
@@ -181,6 +183,7 @@ empezar después de la 4.
   | `TIMEOUTS_LECTURA_S` · `TIMEOUT_CONEXION_S` | `3,6,8` · `2` | D19 |
   | `BACKOFF_BASE_S` · `BACKOFF_TOPE_S` | `0.5` · `8` | D12 |
   | `CONCURRENCIA_LECTURAS` | `4` | D14 |
+  | `VENTANA_ENVIO_S` | `0.25` | D42 |
   | `TTL_CIUDADES_S` · `TTL_PRONOSTICO_S` | `86400` · `900` | D32 |
   | `TTL_IDEMPOTENCIA_S` | `86400` | D25 |
 
@@ -202,7 +205,7 @@ Las once del análisis (sección 5) más las del proceso:
 
 1. Nunca reintentar 400 ni 404, ni siquiera los 400 de Open-Meteo.
 2. Nunca llamar al servicio inestable antes de que venza un Retry-After recibido; toda
-   llamada al servicio pasa por la compuerta.
+   llamada al servicio pasa por la compuerta y por el turno de envío (D42).
 3. Nunca devolver un 500 por un error de una dependencia: 502 o 504 (D20).
 4. Validar los parámetros propios (422) antes de gastar una llamada externa.
 5. Toda llamada saliente lleva un timeout explícito.
@@ -247,3 +250,5 @@ Lo que se cambió en este canvas después de revisarlo, y por qué (regla 3 de A
 | Fecha | Tareas | Cambio | Por qué |
 |---|---|---|---|
 | 2026-10-23 | 1–6 | El cuerpo de los 502/504 se llama `CuerpoErrorDependencia`; la clase de los contadores, `RegistroMetricas`; `resiliencia.py` agrega `Politica`; se fija la forma de `Metricas`, y se suma `pytest.ini` | Nombres al implementar, sin cambio de comportamiento: `ErrorDependencia` ya era la excepción y `Metricas` el modelo de la respuesta |
+| 2026-10-23 | 10–15 | El «candado por clave» de la idempotencia (A6) es el registro de la clave en curso, sin `asyncio.Lock`; los valores diarios de `DiaPronostico` pueden ser `null`; `GET /v1/ciudades` responde la lista sin envoltorio; los modelos externos de Open-Meteo viven en `clientes/open_meteo.py`, y se suman `pruebas/conftest.py` y `pruebas/open_meteo_falso.py` | Sin cambio de comportamiento: en asyncio no hay `await` entre buscar la clave y registrarla, así que el registro ya excluye a la segunda petición y el 409 sale igual. Open-Meteo puede dejar un día en `null`, y rechazarlo daría un 502 por un dato que sí llegó |
+| 2026-10-23 | 7–9 | Turno de envío en la compuerta (D42): Approach 1 y 3, Norms (`VENTANA_ENVIO_S`), Safeguard 2 y Structure (`test_sensores.py`, `medir_sensores.py`) | Cambio de comportamiento. Salió al probar contra el servicio real (hallazgo C8): la compuerta no alcanzaba a las peticiones que ya habían salido. Se probó en la rama para medirlo, y el equipo lo eligió con esos números antes de integrarlo |

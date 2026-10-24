@@ -175,6 +175,37 @@ def test_otra_llamada_espera_a_que_abra_la_compuerta():
     assert servidor.llegadas == [5.0]
 
 
+def test_el_turno_de_envio_no_deja_salir_otra_llamada_antes_de_saber_del_429():
+    # Dos llamadas a la vez y una respuesta que tarda en llegar: sin el turno, la
+    # segunda saldría mientras el 429 de la primera viene en camino, y el servicio la
+    # registraría como «no respetó Retry-After» (C8).
+    reloj = RelojFalso()
+    compuerta = CompuertaRetryAfter(reloj=reloj, dormir=reloj.dormir)
+    guion = [(429, {"Retry-After": "2"}), (200, {}), (200, {})]
+    llegadas = []
+
+    async def responder(peticion: httpx.Request) -> httpx.Response:
+        llegadas.append(reloj())
+        codigo, cabeceras = guion.pop(0)
+        await asyncio.sleep(0.01)  # la respuesta tarda 10 ms: tiempo de sobra para que salga la otra
+        return httpx.Response(codigo, headers=cabeceras, json={})
+
+    async def correr():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(responder), base_url="http://servicio") as cliente:
+
+            def llamada():
+                return llamar_con_reintentos(
+                    cliente, "GET", "/sensores", politica=POLITICA, fecha_limite=45.0,
+                    compuerta=compuerta, reloj=reloj, dormir=reloj.dormir, azar=lambda a, b: b,
+                )
+
+            await asyncio.gather(llamada(), llamada())
+
+    asyncio.run(correr())
+    assert llegadas[0] == 0.0
+    assert all(llegada >= 2.0 for llegada in llegadas[1:])
+
+
 def test_no_espera_una_compuerta_que_abre_despues_del_plazo():
     reloj = RelojFalso()
     compuerta = CompuertaRetryAfter(reloj=reloj, dormir=reloj.dormir)

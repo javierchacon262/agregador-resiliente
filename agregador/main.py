@@ -6,12 +6,14 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from agregador.cache import CacheTTL
 from agregador.config import cargar_configuracion
 from agregador.evidencia import MiddlewareEvidencia
+from agregador.idempotencia import AlmacenIdempotencia
 from agregador.metricas import RegistroMetricas
 from agregador.modelos import CuerpoErrorDependencia, Salud
 from agregador.resiliencia import CompuertaRetryAfter, ErrorDependencia, Politica
-from agregador.rutas import metricas
+from agregador.rutas import alertas, ciudades, metricas, sensores
 
 
 @asynccontextmanager
@@ -21,7 +23,13 @@ async def lifespan(app: FastAPI):
     estado.config = config
     estado.metricas = RegistroMetricas()
     # Una sola compuerta para todas las llamadas al servicio inestable (D14).
-    estado.compuerta = CompuertaRetryAfter()
+    estado.compuerta = CompuertaRetryAfter(ventana_envio=config.ventana_envio_s)
+    # Cachés en memoria con su TTL (D32); los nombres van en Cache-Status (D33).
+    estado.cache_ciudades = CacheTTL("agregador-ciudades", config.ttl_ciudades_s)
+    estado.cache_pronostico = CacheTTL("agregador-pronostico", config.ttl_pronostico_s)
+    # Alertas y claves de idempotencia, también en memoria (D24, D25).
+    estado.alertas = alertas.RegistroAlertas()
+    estado.idempotencia = AlmacenIdempotencia(config.ttl_idempotencia_s)
     comunes = dict(
         timeouts_lectura=config.timeouts_lectura_s,
         timeout_conexion=config.timeout_conexion_s,
@@ -59,6 +67,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(MiddlewareEvidencia)
+app.include_router(ciudades.router)
+app.include_router(sensores.router)
+app.include_router(alertas.router)
 app.include_router(metricas.router)
 
 
