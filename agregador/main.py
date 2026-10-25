@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     estado.politica_open_meteo = Politica(
         dependencia="open_meteo", etiqueta="open-meteo", maximo=config.maximo_intentos_open_meteo, **comunes
     )
-    # Parte E: sus propios timeouts, 4 → 6 → 8 s, porque su API tarda segundos (D46).
+    # Parte E: sus propios timeouts, 10 s por intento, porque su API tarda segundos (D50).
     estado.politica_otro_grupo = Politica(
         dependencia="otro_grupo",
         etiqueta="otro-grupo",

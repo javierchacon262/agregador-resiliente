@@ -30,7 +30,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 49 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 51 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -75,7 +75,7 @@ API propia (todo bajo `/v1`, salvo la salud):
 | `GET /v1/sensores` | Todos los sensores con su lectura, tolerando fallos | Servicio inestable (paginación + lecturas) |
 | `POST /v1/alertas` | Crea una alerta de umbral (201 + `Location`); idempotente con `Idempotency-Key` obligatoria | Ninguna |
 | `GET /v1/alertas` y `GET /v1/alertas/{id}` | Lista las alertas o trae una | Ninguna |
-| `GET /v1/libros?titulo=` | Una obra y su autor (Parte E, D44): caché de 24 h y `Cache-Status` | La API del grupo de Open Library |
+| `GET /v1/libros?titulo=` | Una obra y su autor (Parte E, D44): caché de 10 min y `Cache-Status` | La API del grupo de Open Library |
 | `GET /v1/metricas` | Reintentos por causa, caché, latencias y estado de las dependencias, para el panel de resiliencia | Ninguna |
 | `GET /salud` | Comprobación de vida del agregador | Ninguna |
 | `GET /dashboard` | Dashboard estático; se hace al final, después de la Parte E (D39) | Nuestra propia API |
@@ -168,7 +168,8 @@ caché, medición, métricas, evidencia, alcance y roles. La 9 cerró P23 con el
 enunciado, y la 10 salió al probar el código contra el servicio real (hallazgo C8). En la 11, el
 mismo día de la entrega, el equipo descartó la Parte E. En la 12 (2026-10-24) la retomó, porque
 apareció el grupo de Open Library con su API publicada, y fijó cómo consumirla (D44–D48) y
-cómo publicar la nuestra para ellos (D49).
+cómo publicar la nuestra para ellos (D49). En la 13 (2026-10-25), antes de fusionar, el
+equipo ajustó los reintentos y la caché hacia el otro grupo (D50, D51).
 
 | ID | Decisión | Alternativas descartadas | Por qué | REASONS | Ronda |
 |---|---|---|---|---|---|
@@ -217,10 +218,12 @@ cómo publicar la nuestra para ellos (D49).
 | D43 | **No se hace la Parte E.** Modifica D39 *Ajustada por D44: sí se hace.* | Hacerla con la URL de otro grupo | Elección del equipo el día de la entrega: no hay otro grupo con su agregador disponible para consumirlo. Son +10 de bonificación, así que no restan | O | 11 |
 | D44 | **Sí se hace la Parte E**, consumiendo la API del grupo de **Open Library** (`GET /v1/libros?titulo=`), solo con su `openapi.json`. Modifica D43 | Mantener D43 y no hacerla | Apareció un grupo con su agregador publicado por un túnel de Cloudflare, y su API respondió en las pruebas. Son +10 de bonificación. A cambio, ellos consumen la nuestra por otro túnel | R, O | 12 |
 | D45 | Nuestra ruta es **`GET /v1/libros?titulo=`**: devuelve la obra y su autor tal como los da el otro grupo, con nuestros nombres | `GET /v1/consumo-cruzado/libros?titulo=` | Un recurso «libros» se entiende solo en `/docs`; que venga de otro grupo es un detalle de implementación, igual que Open-Meteo detrás de `/v1/ciudades` | R, S | 12 |
-| D46 | Hacia el otro grupo, **3 intentos con timeouts de lectura de 4 → 6 → 8 s y plazo de 20 s** por petición, con las reglas de reintento selectivo de D12 y sin compuerta (no manda Retry-After) | 2 intentos de 10 s y plazo de 25 s; los de Open-Meteo (3 → 6 → 8 s) | Su API tardó entre 3,7 y 8 s en las pruebas. El primer intento corta rápido cuando están ágiles y los siguientes toleran los casos lentos, como en D19. El peor caso es 18 s más las esperas, y el plazo de 20 s lo acota | A | 12 |
-| D47 | **Caché de 24 h** para `GET /v1/libros`, con la misma caché de D32 y `Cache-Status` (D33) | Sin caché | El autor de una obra no cambia, y su API tarda segundos y corre en el computador de otro grupo: la caché evita cargarla con la misma pregunta | A | 12 |
+| D46 | Hacia el otro grupo, **3 intentos con timeouts de lectura de 4 → 6 → 8 s y plazo de 20 s** por petición, con las reglas de reintento selectivo de D12 y sin compuerta (no manda Retry-After) *Ajustada por D50: 2 intentos de 10 s y plazo de 25 s.* | 2 intentos de 10 s y plazo de 25 s; los de Open-Meteo (3 → 6 → 8 s) | Su API tardó entre 3,7 y 8 s en las pruebas. El primer intento corta rápido cuando están ágiles y los siguientes toleran los casos lentos, como en D19. El peor caso es 18 s más las esperas, y el plazo de 20 s lo acota | A | 12 |
+| D47 | **Caché de 24 h** para `GET /v1/libros`, con la misma caché de D32 y `Cache-Status` (D33) *Ajustada por D51: 10 min.* | Sin caché | El autor de una obra no cambia, y su API tarda segundos y corre en el computador de otro grupo: la caché evita cargarla con la misma pregunta | A | 12 |
 | D48 | La dirección del otro grupo va en **`OTRO_GRUPO_URL`**, con la URL de su túnel como valor por defecto | Sin valor por defecto: la ruta responde 502 si no se configura | Arranca sin configurar nada, como el resto (D28). La URL de un túnel rápido cambia si lo reinician; entonces solo se cambia la variable al arrancar | S, N | 12 |
 | D49 | **Nuestra API se publica para el otro grupo con un túnel rápido de Cloudflare**, que corre en Docker en el computador de Maria Fernanda (`cloudflare/cloudflared:2025.10.0`, en la red del Compose, apuntando a `http://agregador:8000`), y solo mientras ellos prueban. No toca el código ni el Compose: se prende y se apaga aparte | La IP de la red local (`http://192.168.1.24:8000`), que solo sirve en la misma wifi; desplegar el agregador en la nube; ngrok | Los dos grupos no están en la misma red, y es lo mismo que usó el otro grupo, sin cuenta ni configuración. Corre en Docker, como todo lo demás (D16). La URL cambia cada vez que se prende, no tiene garantía de disponibilidad, y mientras está prendido cualquiera con la URL puede usar la API (no hay datos privados). Se prende con un comando que corre la persona, no el agente | S, O | 12 |
+| D50 | Hacia el otro grupo, **2 intentos de hasta 10 s cada uno y plazo de 25 s** por petición, con las mismas reglas de reintento selectivo y sin compuerta. Modifica D46 | Mantener D46 (3 intentos, 4 → 6 → 8 s, plazo de 20 s) | Elección del equipo antes de fusionar: su API corre en el computador de otro grupo y tarda segundos. Con 10 s, casi cualquier respuesta suya alcanza a llegar en el primer intento, y con 2 intentos no se les carga con peticiones de más. El peor caso es 10 + 10 s más la espera entre los dos, dentro de los 25 s | A | 13 |
+| D51 | **Caché de 10 min** para `GET /v1/libros`. Modifica D47 | Mantener D47 (24 h) | Elección del equipo antes de fusionar: es un servicio que no controlamos y que puede cambiar o corregir sus datos; con 10 min, un cambio suyo se ve pronto, y la caché sigue evitando preguntarles lo mismo varias veces seguidas | A | 13 |
 
 ### Riesgos y matices
 
@@ -475,7 +478,7 @@ dos grupos:
 | `test_open_meteo.py` | El cliente: candidatos, `results` ausente (E1), id inexistente sin reintento (E6), listas paralelas (E7), 3 intentos y 502/504 (D20, D22) | Nada |
 | `test_rutas.py` | Códigos de estado y cabeceras de ciudades y alertas, con un Open-Meteo falso que cuenta las llamadas: los 422 no gastan ninguna | Nada |
 | `test_sensores.py` | La ruta de sensores con un servicio falso: completa, lectura o página que no llega, 502 sin sensores o sin lecturas, 504 por timeouts, cursor repetido y 404 sin reintento (D15, D21) | Nada |
-| `test_otro_grupo.py` | La Parte E con la API del otro grupo falsa: sus campos, 404 sin reintento, timeouts 4 → 6 → 8 s, su 502/504 como 502, la página HTML de Cloudflare, caché y 422 sin llamarlos (D44–D47) | Nada |
+| `test_otro_grupo.py` | La Parte E con la API del otro grupo falsa: sus campos, 404 sin reintento, 2 intentos de 10 s, su 502/504 como 502, la página HTML de Cloudflare, caché y 422 sin llamarlos (D44–D47) | Nada |
 | `test_api_ciudades.py` · `test_api_alertas.py` · `test_api_sensores.py` · `test_api_libros.py` | La colección: contra el stack levantado, Open-Meteo real, el servicio inestable y la API real del otro grupo | El stack |
 
 Para correr solo las que no necesitan el stack:
@@ -774,8 +777,8 @@ cache-status: agregador-libros; fwd=uri-miss; stored
 La segunda línea de `GET /v1/libros` salió de la caché: 0,00 s en vez de 3,18 s.
 
 **Cómo lo tratamos:** como una dependencia más, con la misma función de reintentos de
-D12: 3 intentos con timeouts de 4 → 6 → 8 s y un plazo de 20 s
-([D46](#log-de-decisiones)), y caché de 24 h ([D47](#log-de-decisiones)). Su 404 es
+D12: 2 intentos de hasta 10 s cada uno y un plazo de 25 s
+([D50](#log-de-decisiones)), y caché de 10 min ([D51](#log-de-decisiones)). Su 404 es
 nuestro 404, sin reintentar. Su 502 o 504 son nuestro 502, porque sí respondieron; el
 504 queda para cuando no responden a tiempo (D20). Si su servidor no está, solo falla
 esta ruta.
@@ -830,8 +833,8 @@ Lo que **le faltó**, comprobado en su `openapi.json`:
 5. **`fecha_nacimiento` es texto sin formato.** Recibimos `"1927-03-06"`, pero el
    contrato no dice si siempre es AAAA-MM-DD; por eso la pasamos tal cual, como texto.
 6. **No dice cuánto tarda ni si tiene caché.** En nuestras pruebas tardó entre 1,7 y
-   8 s; sin esa información, quien la consuma no sabe qué timeout ponerle. Elegimos 4 →
-   6 → 8 s a partir de lo que medimos (D46).
+   8 s; sin esa información, quien la consuma no sabe qué timeout ponerle. Elegimos 10 s por intento a partir de
+   lo que medimos (D50).
 7. **La idempotencia de `POST /v1/alertas` no queda clara.** `Idempotency-Key` aparece
    como opcional, y solo hay 201 y 422: no dice qué pasa si falta la clave, si se repite
    con otro cuerpo o si llega mientras la primera sigue en curso. Tampoco hay forma de

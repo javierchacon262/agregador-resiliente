@@ -2,9 +2,8 @@
 
 Solo se usa lo que dice su contrato (`requirements/parte-e/openapi-grupo-open-library.json`):
 `GET /v1/libros?titulo=` responde un `ResumenObra`, o 404 si no encontró una obra con
-autor. La llamada pasa por `llamar_con_reintentos` con su propia política: 3 intentos,
-timeouts de 4 → 6 → 8 s, plazo de 20 s y sin compuerta, porque no manda Retry-After
-(D46).
+autor. La llamada pasa por `llamar_con_reintentos` con su propia política: 2 intentos
+de hasta 10 s, plazo de 25 s y sin compuerta, porque no manda Retry-After (D50).
 """
 
 import httpx

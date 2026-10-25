@@ -140,3 +140,11 @@ Lo que se ajustó al depurar:
   corresponden. Después se restauró el código.
 - **Las 132 pruebas anteriores siguen pasando:** la Parte E no cambió el comportamiento
   de las demás rutas.
+
+### Ajuste de D50 y D51 (2026-10-25)
+
+Antes de fusionar, el equipo cambió los reintentos hacia el otro grupo a **2 intentos de
+10 s con plazo de 25 s** (D50) y la caché de libros a **10 min** (D51). Las pruebas se
+actualizaron a esos valores: `test_dos_timeouts_de_10_segundos_dan_504` comprueba que los
+dos intentos llevan 10 s de timeout, `test_dos_503_dan_502` que no hay un tercero, y la
+de caché espera `ttl=600`. El código y las pruebas se volvieron a correr completos.

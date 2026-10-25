@@ -1,8 +1,8 @@
 """GET /v1/libros: la Parte E, consumo cruzado (D44, D45).
 
 Le pregunta a la API del grupo de Open Library por un título, usando solo su contrato
-OpenAPI, y responde lo mismo que ella con sus mismos nombres de campo. Se cachea 24 h
-(D47). Si su servidor no está, solo falla esta ruta.
+OpenAPI, y responde lo mismo que ella con sus mismos nombres de campo. Se cachea 10 min
+(D51). Si su servidor no está, solo falla esta ruta.
 """
 
 import time
@@ -22,8 +22,8 @@ router = APIRouter(prefix="/v1", tags=["libros (Parte E)"])
     summary="Buscar una obra y su autor en la API de otro grupo",
     description=(
         "Consumo cruzado (Parte E): pregunta a la API del grupo de Open Library, `GET /v1/libros?titulo=`, "
-        "y devuelve su respuesta con los mismos campos. Hasta 3 intentos y 20 s por petición (D46); "
-        "caché de 24 h (D47), que `Cache-Control: no-cache` se salta."
+        "y devuelve su respuesta con los mismos campos. Hasta 2 intentos de 10 s y 25 s por petición (D50); "
+        "caché de 10 min (D51), que `Cache-Control: no-cache` se salta."
     ),
     responses={
         200: {
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/v1", tags=["libros (Parte E)"])
         },
         404: {"description": "Su API no encontró una obra con autor para ese título"},
         502: {"model": CuerpoErrorDependencia, "description": "Su API falló o respondió algo que no cumple su contrato"},
-        504: {"model": CuerpoErrorDependencia, "description": "Su API no respondió a tiempo o se agotó el plazo de 20 s"},
+        504: {"model": CuerpoErrorDependencia, "description": "Su API no respondió a tiempo o se agotó el plazo de 25 s"},
     },
 )
 async def buscar_libro(

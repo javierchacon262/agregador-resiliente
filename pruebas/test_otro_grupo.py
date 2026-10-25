@@ -57,7 +57,7 @@ def api():
 
 def con_grupo(api: TestClient, *pasos, base: float = 0.001) -> GrupoFalso:
     """Pone el servidor falso detrás de la app, con backoff de milisegundos pero con
-    los timeouts de D46 tal como salen de la configuración."""
+    los timeouts de D50 tal como salen de la configuración."""
     falso = GrupoFalso(*pasos)
     estado = api.app.state
     estado.cliente_otro_grupo = httpx.AsyncClient(transport=httpx.MockTransport(falso), base_url="https://grupo.falso")
@@ -105,27 +105,27 @@ def test_su_404_es_nuestro_404_sin_reintentar(api):
 
 
 def test_un_503_se_reintenta(api):
-    """D46: las reglas de reintento selectivo de D12."""
+    """D50: las reglas de reintento selectivo de D12."""
     falso = con_grupo(api, 503, 200)
     assert libros(api).status_code == 200
     assert len(falso.peticiones) == 2
 
 
-def test_tres_503_dan_502(api):
-    """D46: máximo 3 intentos; después, 502 (D20)."""
-    falso = con_grupo(api, 503, 503, 503, 503)
+def test_dos_503_dan_502(api):
+    """D50: máximo 2 intentos; después, 502 (D20)."""
+    falso = con_grupo(api, 503, 503, 503)
     respuesta = libros(api)
     assert respuesta.status_code == 502
-    assert respuesta.json() | {"detalle": ""} == {"detalle": "", "dependencia": "otro_grupo", "causa": "503", "intentos": 3}
-    assert len(falso.peticiones) == 3
+    assert respuesta.json() | {"detalle": ""} == {"detalle": "", "dependencia": "otro_grupo", "causa": "503", "intentos": 2}
+    assert len(falso.peticiones) == 2
 
 
-def test_timeouts_de_4_6_y_8_segundos_y_504(api):
-    """D46: el timeout de lectura crece por intento, 4 → 6 → 8 s, y al agotarlos, 504."""
-    falso = con_grupo(api, *[httpx.ReadTimeout("lenta")] * 3)
+def test_dos_timeouts_de_10_segundos_dan_504(api):
+    """D50: 2 intentos de hasta 10 s cada uno, y al agotarlos, 504."""
+    falso = con_grupo(api, *[httpx.ReadTimeout("lenta")] * 2)
     respuesta = libros(api)
     assert (respuesta.status_code, respuesta.json()["causa"]) == (504, "timeout")
-    assert falso.timeouts() == [4, 6, 8]
+    assert falso.timeouts() == [10, 10]
 
 
 @pytest.mark.parametrize("codigo", [502, 504])
@@ -152,7 +152,7 @@ def test_un_cuerpo_sin_los_campos_obligatorios_da_502(api):
 
 def test_su_servidor_caido_da_502_y_lo_demas_sigue(api):
     """Salvaguarda 6: si su túnel no está, solo falla /v1/libros."""
-    con_grupo(api, *[httpx.ConnectError("caído")] * 3)
+    con_grupo(api, *[httpx.ConnectError("caído")] * 2)
     respuesta = libros(api)
     assert (respuesta.status_code, respuesta.json()["causa"]) == (502, "conexion")
     assert api.get("/salud").status_code == 200
@@ -171,12 +171,12 @@ def test_titulo_invalido_da_422_sin_llamarlos(api, titulo):
 
 
 def test_la_segunda_vez_sale_de_la_cache(api):
-    """D47: 24 h; sin distinguir mayúsculas ni espacios de los extremos."""
+    """D51: 10 min; sin distinguir mayúsculas ni espacios de los extremos."""
     falso = con_grupo(api)
     primera = libros(api)
     assert primera.headers["Cache-Status"] == "agregador-libros; fwd=uri-miss; stored"
     segunda = libros(api, "  cien AÑOS de soledad ")
-    assert segunda.headers["Cache-Status"] == "agregador-libros; hit; ttl=86400"
+    assert segunda.headers["Cache-Status"] == "agregador-libros; hit; ttl=600"
     assert segunda.json() == primera.json()
     assert len(falso.peticiones) == 1
 

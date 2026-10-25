@@ -50,8 +50,8 @@ contrato reconozca la respuesta y se vea que no agregamos nada que no esté en �
 ## A · Approach (enfoque)
 
 1. **El otro grupo es una dependencia más**, con la misma función de reintentos de
-   D12: `llamar_con_reintentos` con una `Politica` propia de 3 intentos, timeouts de
-   lectura de 4 → 6 → 8 s y plazo de 20 s por petición, sin compuerta (D46).
+   D12: `llamar_con_reintentos` con una `Politica` propia de 2 intentos de hasta 10 s
+   cada uno y plazo de 25 s por petición, sin compuerta (D50, que ajusta D46).
 2. **Lo que responden, según su contrato:** 200 → validar y convertir; 404 («No se
    encontró una obra con autor») → 404 nuestro, sin reintentar; 503 y 429 → se
    reintentan; otro código → 502 sin reintentar (D20). Su 502 o su 504 son 502 para
@@ -59,7 +59,7 @@ contrato reconozca la respuesta y se vea que no agregamos nada que no esté en �
    nuestro 504 queda para cuando ellos no responden a tiempo, como en el resto de la API; timeout o plazo → 504; un cuerpo
    que no cumple `ResumenObra` (por ejemplo, la página HTML de error de Cloudflare)
    → 502 `respuesta_invalida`.
-3. **Caché de 24 h** con `CacheTTL` y `Cache-Status: agregador-libros; …` (D47). La
+3. **Caché de 10 min** con `CacheTTL` y `Cache-Status: agregador-libros; …` (D51, que ajusta D47). La
    clave es el título sin mayúsculas ni espacios de los extremos. Un 404 o un error no
    se guardan.
 4. **La URL viene de `OTRO_GRUPO_URL`** (D48). Si su túnel se cae, solo falla esta
@@ -99,9 +99,9 @@ Las del canvas del backend. Además:
 | Variable | Por defecto | Decisión |
 |---|---|---|
 | `OTRO_GRUPO_URL` | `https://validation-seed-grill-junior.trycloudflare.com` | D48 |
-| `MAXIMO_INTENTOS_OTRO_GRUPO` · `PLAZO_OTRO_GRUPO_S` | `3` · `20` | D46 |
-| `TIMEOUTS_LECTURA_OTRO_GRUPO_S` | `4,6,8` | D46 |
-| `TTL_LIBROS_S` | `86400` | D47 |
+| `MAXIMO_INTENTOS_OTRO_GRUPO` · `PLAZO_OTRO_GRUPO_S` | `2` · `25` | D50 |
+| `TIMEOUTS_LECTURA_OTRO_GRUPO_S` | `10` | D50 |
+| `TTL_LIBROS_S` | `600` | D51 |
 
 En el log de evidencias, la etiqueta de la dependencia es `otro-grupo`; en métricas y
 errores, `otro_grupo`.
@@ -112,6 +112,14 @@ errores, `otro_grupo`.
    va al reporte como algo que le faltó al contrato, no se pregunta.
 2. Nunca reintentar su 404 ni sus 4xx (D12).
 3. Validar `titulo` (422) antes de llamar a su API.
-4. Toda llamada lleva timeout, y ninguna petición pasa de 20 s (D46).
+4. Toda llamada lleva timeout, y ninguna petición pasa de 25 s (D50).
 5. Un fallo suyo nunca sale como 500: 404, 502 o 504.
 6. Si su servidor no está, el resto de nuestra API sigue igual.
+
+## Cambios
+
+Lo que se cambió en este canvas después de revisarlo, y por qué (regla 3 de AGENTS.md).
+
+| Fecha | Tareas | Cambio | Por qué |
+|---|---|---|---|
+| 2026-10-25 | 16–18 | Reintentos hacia el otro grupo: de 3 intentos con 4 → 6 → 8 s y plazo de 20 s a **2 intentos de 10 s y plazo de 25 s** (D50). Caché de libros: de 24 h a **10 min** (D51) | Decisión de Maria Fernanda antes de fusionar: menos peticiones a una API que corre en el computador de otro grupo, cada una con tiempo de sobra para responder, y datos guardados por menos tiempo de un servicio que no controlamos. Cambia el comportamiento, así que se corrigió primero el canvas y después el código |

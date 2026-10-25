@@ -70,8 +70,8 @@ def cargar_configuracion() -> Configuracion:
         # Parte E: la API del grupo de Open Library (D44). Su URL es la de un túnel
         # rápido de Cloudflare, que cambia si lo reinician (D48).
         otro_grupo_url=_texto("OTRO_GRUPO_URL", "https://validation-seed-grill-junior.trycloudflare.com"),
-        maximo_intentos_otro_grupo=_entero("MAXIMO_INTENTOS_OTRO_GRUPO", 3),  # D46
-        plazo_otro_grupo_s=_numero("PLAZO_OTRO_GRUPO_S", 20),  # D46
-        timeouts_lectura_otro_grupo_s=_numeros("TIMEOUTS_LECTURA_OTRO_GRUPO_S", "4,6,8"),  # D46
-        ttl_libros_s=_numero("TTL_LIBROS_S", 86400),  # D47
+        maximo_intentos_otro_grupo=_entero("MAXIMO_INTENTOS_OTRO_GRUPO", 2),  # D50
+        plazo_otro_grupo_s=_numero("PLAZO_OTRO_GRUPO_S", 25),  # D50
+        timeouts_lectura_otro_grupo_s=_numeros("TIMEOUTS_LECTURA_OTRO_GRUPO_S", "10"),  # D50
+        ttl_libros_s=_numero("TTL_LIBROS_S", 600),  # D51
     )
