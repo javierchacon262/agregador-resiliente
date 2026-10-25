@@ -18,7 +18,7 @@ class CuerpoErrorDependencia(BaseModel):
     """Cuerpo de los 502 y 504 cuando falla una dependencia (D20)."""
 
     detalle: str = Field(examples=["El servicio inestable no respondió dentro del plazo de la petición"])
-    dependencia: Literal["servicio_inestable", "open_meteo"]
+    dependencia: Literal["servicio_inestable", "open_meteo", "otro_grupo"]
     causa: str = Field(
         description="timeout, plazo, conexion, respuesta_invalida, o el código que respondió (503, 429, 500…)",
         examples=["plazo"],
@@ -56,7 +56,7 @@ class Metricas(BaseModel):
     """Lo que lee el panel de resiliencia del dashboard (D35). Cuenta desde el arranque."""
 
     desde: datetime
-    dependencias: dict[Literal["servicio_inestable", "open_meteo"], MetricasDependencia]
+    dependencias: dict[Literal["servicio_inestable", "open_meteo", "otro_grupo"], MetricasDependencia]
     cache: MetricasCache
     latencia_ms: dict[str, LatenciaRuta] = Field(description="Por plantilla de ruta, p. ej. /v1/alertas/{id}")
 
@@ -174,3 +174,19 @@ class LecturaServicio(BaseModel):
     valor: float
     unidad: str
     marca_tiempo: datetime
+
+
+# Parte E: libros de la API del grupo de Open Library (D44, D45) ──────────────────
+
+
+class Libro(BaseModel):
+    """Una obra y su autor, con los mismos campos y nombres del `ResumenObra` de su
+    contrato: así quien lea su OpenAPI reconoce la respuesta."""
+
+    obra: str = Field(examples=["Cien años de soledad"])
+    autor: str = Field(examples=["Gabriel García Márquez"])
+    clave_autor: str = Field(description="Clave del autor en Open Library", examples=["OL27363A"])
+    nombre_personal_real: str | None = Field(default=None, examples=["García Márquez, Gabriel"])
+    fecha_nacimiento: str | None = Field(
+        default=None, description="Texto tal como lo da su API; su contrato no fija el formato", examples=["1927-03-06"]
+    )

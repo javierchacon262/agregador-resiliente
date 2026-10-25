@@ -28,6 +28,9 @@ services:
       - "8000:8000"
     environment:
       SERVICIO_INESTABLE_URL: ${SERVICIO_INESTABLE_URL:-http://servicio-inestable:9000}
+      # Parte E: la API del otro grupo (D48). Si reinician su túnel, cambia la URL:
+      #   OTRO_GRUPO_URL=https://la-nueva.trycloudflare.com docker compose up -d --wait
+      OTRO_GRUPO_URL: ${OTRO_GRUPO_URL:-https://validation-seed-grill-junior.trycloudflare.com}
     # Para que host.docker.internal resuelva también en Linux (C6).
     extra_hosts:
       - "host.docker.internal:host-gateway"

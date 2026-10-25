@@ -36,3 +36,4 @@ Antes de subirlo, desde un clon limpio (R5: no hay CI que lo compruebe):
 | README: respuestas a las preguntas de la Parte D | README, «Preguntas de análisis (Parte D)» |
 | Evidencias de los reintentos | `evidencias/` y README, «Evidencias de los reintentos» |
 | Colección de peticiones de prueba | `pruebas/` (`docker compose run --rm pruebas`) |
+| Parte E (bonificación): consumo cruzado y qué le faltó o sobró al contrato | README, «Parte E: consumo cruzado»; contrato del otro grupo en `requirements/parte-e/` |

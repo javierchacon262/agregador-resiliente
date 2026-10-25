@@ -8,7 +8,7 @@ import statistics
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timezone
 
-DEPENDENCIAS = ("servicio_inestable", "open_meteo")
+DEPENDENCIAS = ("servicio_inestable", "open_meteo", "otro_grupo")
 VENTANA_LATENCIAS = 100  # últimas peticiones por ruta (detalle 10 del canvas)
 
 

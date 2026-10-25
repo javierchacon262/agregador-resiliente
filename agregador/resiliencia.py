@@ -28,7 +28,11 @@ Azar = Callable[[float, float], float]
 # de camino (D22). Un error de configuración, como una URL sin esquema, no entra.
 ERRORES_DE_CONEXION = (httpx.NetworkError, httpx.RemoteProtocolError)
 
-NOMBRES = {"servicio_inestable": "El servicio inestable", "open_meteo": "Open-Meteo"}
+NOMBRES = {
+    "servicio_inestable": "El servicio inestable",
+    "open_meteo": "Open-Meteo",
+    "otro_grupo": "La API del grupo de Open Library",
+}
 
 
 @dataclass(frozen=True)

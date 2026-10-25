@@ -42,6 +42,11 @@ class Configuracion:
     ttl_ciudades_s: float
     ttl_pronostico_s: float
     ttl_idempotencia_s: float
+    otro_grupo_url: str
+    maximo_intentos_otro_grupo: int
+    plazo_otro_grupo_s: float
+    timeouts_lectura_otro_grupo_s: tuple[float, ...]
+    ttl_libros_s: float
 
 
 def cargar_configuracion() -> Configuracion:
@@ -62,4 +67,11 @@ def cargar_configuracion() -> Configuracion:
         ttl_ciudades_s=_numero("TTL_CIUDADES_S", 86400),  # D32
         ttl_pronostico_s=_numero("TTL_PRONOSTICO_S", 900),  # D32
         ttl_idempotencia_s=_numero("TTL_IDEMPOTENCIA_S", 86400),  # D25
+        # Parte E: la API del grupo de Open Library (D44). Su URL es la de un túnel
+        # rápido de Cloudflare, que cambia si lo reinician (D48).
+        otro_grupo_url=_texto("OTRO_GRUPO_URL", "https://validation-seed-grill-junior.trycloudflare.com"),
+        maximo_intentos_otro_grupo=_entero("MAXIMO_INTENTOS_OTRO_GRUPO", 2),  # D50
+        plazo_otro_grupo_s=_numero("PLAZO_OTRO_GRUPO_S", 25),  # D50
+        timeouts_lectura_otro_grupo_s=_numeros("TIMEOUTS_LECTURA_OTRO_GRUPO_S", "10"),  # D50
+        ttl_libros_s=_numero("TTL_LIBROS_S", 600),  # D51
     )

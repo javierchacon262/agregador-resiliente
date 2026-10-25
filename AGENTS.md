@@ -46,7 +46,11 @@ idempotencia, la colección de ciudades y alertas, la medición de latencia y la
 secciones de entrega del README (tareas 10–15). Javier hizo los sensores, su colección y
 la validación de la simulación (tareas 7–9, rama `feat/sensores`), con el turno de envío
 (D42) que salió al probar contra el servicio real (C8). El día de la entrega el equipo
-descartó la Parte E (D43).
+descartó la Parte E (D43). Al día siguiente apareció el grupo de Open Library con su
+API publicada, y la ronda 12 la retomó (D44–D48). Maria Fernanda escribió su canvas y la
+hizo en la rama `feat/parte-e-consumo-cruzado` (tareas 16–19). Para que ellos consuman la
+nuestra, se publica con un túnel rápido de Cloudflare en Docker (D49); el comando está en
+la sección «Parte E» del README. Abrir un túnel público lo corre la persona, no el agente.
 
 Leer en este orden:
 
@@ -65,7 +69,7 @@ Leer en este orden:
    backend. Su sección Operations es la lista de tareas del código, con el rol de cada
    una (D40).
 5. [`spdd/template/REASONS-canvas.md`](spdd/template/REASONS-canvas.md): la plantilla,
-   para los canvas que faltan (Parte E y dashboard).
+   para el canvas que falta (el dashboard).
 
 ## Reglas
 
@@ -112,7 +116,8 @@ Leer en este orden:
 1. El backend está completo (tareas 1–15). Para la entrega: el comprimido de `main`
    para Moodle con la lista de chequeo de `entrega/`.
 2. Después de la entrega, si se retoma: el canvas del dashboard (D08, D10) y luego su
-   código. La Parte E no se hace (D43).
+   código. La Parte E está en su canvas (D44–D48); si el otro grupo reinicia su túnel,
+   cambiar `OTRO_GRUPO_URL` (D48).
 3. Pendiente menor: revisar el análisis y marcarlo como «revisado».
 
 ## Cómo seguir
