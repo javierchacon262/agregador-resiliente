@@ -30,7 +30,7 @@ registrada en este README.
 ## Estado
 
 > **Fase actual: código del backend (paso 5 de SPDD).** El canvas está revisado y hay
-> 51 decisiones tomadas, sin pendientes. Se genera tarea por tarea, según la sección
+> 51 decisiones tomadas y 1 pendiente (P24, el canvas del dashboard). Se genera tarea por tarea, según la sección
 > Operations del [canvas](spdd/prompt/).
 
 ```mermaid
@@ -78,7 +78,7 @@ API propia (todo bajo `/v1`, salvo la salud):
 | `GET /v1/libros?titulo=` | Una obra y su autor (Parte E, D44): caché de 10 min y `Cache-Status` | La API del grupo de Open Library |
 | `GET /v1/metricas` | Reintentos por causa, caché, latencias y estado de las dependencias, para el panel de resiliencia | Ninguna |
 | `GET /salud` | Comprobación de vida del agregador | Ninguna |
-| `GET /dashboard` | Dashboard estático; se hace al final, después de la Parte E (D39) | Nuestra propia API |
+| `GET /dashboard` | Dashboard con las cuatro vistas de D10: resiliencia (lee `/v1/metricas` cada 3 s), pronóstico con buscador, comparar ciudades, y sensores vs exterior | Nuestra propia API |
 
 ```mermaid
 flowchart LR
@@ -413,10 +413,13 @@ sensor, en el mismo orden: la lectura, o `None` con el motivo y la causa
 
 ## Decisiones pendientes
 
-**No queda ninguno.** Los 21 pendientes originales (P01–P21), P22 (ronda 7) y P23 (al
-escribir el canvas) están cerrados; cada decisión dice qué pendiente cierra. Si aparece
-una pregunta nueva, se agrega aquí como P24, y no se genera código para esa parte hasta
-cerrarla.
+Los 21 pendientes originales (P01–P21), P22 (ronda 7) y P23 (al escribir el canvas)
+están cerrados; cada decisión dice qué pendiente cierra. Las preguntas nuevas se agregan
+aquí, y no se genera código para esa parte hasta cerrarlas.
+
+| ID | Pregunta | Propuesta para discutir | Bloquea |
+|---|---|---|---|
+| P24 | El dashboard se escribió sin canvas, a pedido del equipo (2026-10-27), para tenerlo rápido: se salta la regla 1 de AGENTS.md. Falta su canvas | Escribir `spdd/prompt/…-[Feat]-dashboard.md` describiendo el código que ya existe (regla 3, como un refactor: código primero, canvas después), y decidir con el equipo lo que se fijó sin preguntar: Chart.js desde un CDN, refresco cada 3 s, exterior fijo en Bucaramanga | Cambios al dashboard |
 
 ### Supuestos (confirmados en la ronda 5)
 
