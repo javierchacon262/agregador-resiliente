@@ -1,10 +1,11 @@
 """Aplicación FastAPI del agregador: arranque, evidencia, errores de dependencias y rutas."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from agregador.cache import CacheTTL
 from agregador.config import cargar_configuracion
@@ -97,3 +98,9 @@ async def responder_error_dependencia(request: Request, error: ErrorDependencia)
 @app.get("/salud", tags=["salud"], summary="Comprobación de vida; no consulta las dependencias")
 async def salud() -> Salud:
     return Salud(estado="ok")
+
+
+@app.get("/dashboard", include_in_schema=False)
+async def dashboard() -> FileResponse:
+    """El dashboard (D08, D10): una página estática que solo habla con esta API."""
+    return FileResponse(Path(__file__).parent / "estatico" / "dashboard.html")

@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agregador resiliente</title>
+<!-- Chart.js con versión exacta (D08). Solo habla con nuestra API. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f3ef;
+    --surface-1: #fcfcfb;
+    --border: #e2e1dc;
+    --grid: #e8e7e2;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7974;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --neutral: #a3a29c;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface-0: #121211;
+      --surface-1: #1a1a19;
+      --border: #2e2e2b;
+      --grid: #2a2a27;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8f8e86;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --neutral: #6b6a64;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+    padding: 18px 24px 0;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 0; color: var(--text-secondary); }
+  header a { color: var(--series-1); }
+  nav { display: flex; gap: 4px; padding: 14px 24px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  nav button {
+    border: 0; background: none; color: var(--text-secondary); font: inherit;
+    padding: 8px 12px; border-bottom: 2px solid transparent; cursor: pointer;
+  }
+  nav button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--series-1); font-weight: 600; }
+  main { padding: 20px 24px 40px; max-width: 1200px; }
+  section[hidden] { display: none; }
+  .tarjeta { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .tarjeta h2 { margin: 0 0 4px; font-size: 15px; }
+  .tarjeta .nota { margin: 0 0 12px; color: var(--text-muted); font-size: 13px; }
+  .fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .fila .tarjeta { margin-bottom: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .kpi b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .kpi span { color: var(--text-muted); font-size: 12px; }
+  .estado { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); margin-top: 10px; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .lienzo { position: relative; height: 260px; }
+  .lienzo.bajo { height: 180px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  form, .controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  input {
+    font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface-1); color: var(--text-primary);
+  }
+  button.accion {
+    font: inherit; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--series-1); background: var(--series-1); color: #fff;
+  }
+  button.secundario {
+    font: inherit; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
+  }
+  button:disabled { opacity: .55; cursor: wait; }
+  .mensaje { color: var(--text-secondary); font-size: 13px; }
+  .error { color: var(--critical); font-size: 13px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; }
+  .chip button { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 15px; line-height: 1; }
+  .ahora { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 8px 0 12px; }
+  .meta { color: var(--text-muted); font-size: 12px; font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agregador resiliente</h1>
+  <p>Open-Meteo y un servicio de sensores que falla a propósito · <a href="/docs">contrato en /docs</a></p>
+</header>
+<nav role="tablist">
+  <button role="tab" data-vista="resiliencia" aria-selected="true">Resiliencia</button>
+  <button role="tab" data-vista="pronostico" aria-selected="false">Pronóstico</button>
+  <button role="tab" data-vista="comparar" aria-selected="false">Comparar ciudades</button>
+  <button role="tab" data-vista="sensores" aria-selected="false">Sensores vs exterior</button>
+</nav>
+<main>
+
+  <!-- 1 · Resiliencia (D10, D35): se refresca cada 3 s con GET /v1/metricas -->
+  <section id="resiliencia">
+    <div class="fila" id="dependencias"></div>
+    <div class="tarjeta">
+      <h2>Intentos por resultado</h2>
+      <p class="nota">Cada intento hacia cada dependencia, desde el arranque. Los 503, 429 y timeouts se reintentan; los 400 y 404 no (D12).</p>
+      <div class="lienzo bajo"><canvas id="g-resultados" aria-label="Intentos por resultado y dependencia"></canvas></div>
+    </div>
+    <div class="fila">
+      <div class="tarjeta">
+        <h2>Latencia por ruta</h2>
+        <p class="nota">Últimas 100 peticiones de cada ruta.</p>
+        <table id="t-latencias"></table>
+      </div>
+      <div class="tarjeta">
+        <h2>Caché de Open-Meteo</h2>
+        <p class="nota">Ciudades 24 h, pronóstico 15 min (D32).</p>
+        <div class="kpis" id="cache"></div>
+        <div class="controles" style="margin-top:16px">
+          <button class="accion" id="b-disparar">Pedir /v1/sensores ahora</button>
+          <span class="mensaje" id="m-disparar">y mirar cómo suben los reintentos</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Pronóstico de una ciudad, con el buscador de candidatos (D05, D07) -->
+  <section id="pronostico" hidden>
+    <div class="tarjeta">
+      <h2>Buscar una ciudad</h2>
+      <p class="nota">Un nombre puede ser de varias ciudades: elige la correcta (D05).</p>
+      <form id="f-buscar">
+        <input name="nombre" placeholder="Ciudad, p. ej. San José" required minlength="2" autocomplete="off">
+        <input name="pais" placeholder="País ISO-2, p. ej. CO" maxlength="2" size="14" autocomplete="off">
+        <button class="accion">Buscar</button>
+        <span class="mensaje" id="m-buscar"></span>
+      </form>
+      <table id="t-candidatos"></table>
+    </div>
+    <div class="tarjeta" id="c-clima" hidden>
+      <h2 id="clima-titulo"></h2>
+      <p class="meta" id="clima-meta"></p>
+      <div class="ahora" id="clima-ahora"></div>
+      <div class="fila">
+        <div><h2>Temperatura máxima y mínima (°C)</h2><div class="lienzo"><canvas id="g-temp"></canvas></div></div>
+        <div><h2>Probabilidad de lluvia (%)</h2><div class="lienzo"><canvas id="g-lluvia"></canvas></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Comparar ciudades -->
+  <section id="comparar" hidden>
+    <div class="tarjeta">
+      <h2>Comparar ciudades: temperatura máxima (°C)</h2>
+      <p class="nota">Agrega hasta 4 ciudades con «Comparar» desde el buscador de Pronóstico.</p>
+      <div class="chips" id="chips"></div>
+      <p class="mensaje" id="m-comparar">Todavía no hay ciudades. Ve a Pronóstico, busca y pulsa «Comparar».</p>
+      <div class="lienzo"><canvas id="g-comparar"></canvas></div>
+    </div>
+  </section>
+
+  <!-- 4 · Sensores y la relación exterior vs interior (D10) -->
+  <section id="sensores" hidden>
+    <div class="tarjeta">
+      <h2>Sensores del campus</h2>
+      <p class="nota">El servicio falla a propósito: la respuesta puede tardar hasta 45 s (D18) y traer lo obtenido con su motivo (D15). El exterior es Bucaramanga, desde Open-Meteo.</p>
+      <div class="controles">
+        <button class="accion" id="b-sensores">Cargar sensores</button>
+        <span class="mensaje" id="m-sensores"></span>
+      </div>
+    </div>
+    <div class="fila" id="c-sensores" hidden>
+      <div class="tarjeta">
+        <h2>Temperatura: interior vs exterior (°C)</h2>
+        <div class="lienzo"><canvas id="g-sensores-temp"></canvas></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Humedad: interior vs exterior (%)</h2>
+        <div class="lienzo"><canvas id="g-sensores-hum"></canvas></div>
+      </div>
+    </div>
+    <div class="tarjeta" id="c-tabla-sensores" hidden>
+      <h2>Todas las lecturas</h2>
+      <table id="t-sensores"></table>
+    </div>
+  </section>
+</main>
+
+<script>
+const css = (nombre) => getComputedStyle(document.documentElement).getPropertyValue(nombre).trim();
+Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+Chart.defaults.color = css('--text-secondary');
+Chart.defaults.borderColor = css('--grid');
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+Chart.defaults.plugins.legend.labels.boxHeight = 12;
+Chart.defaults.maintainAspectRatio = false;
+
+const SERIES = ['--series-1', '--series-2', '--series-3', '--series-4'].map(css);
+const EXTERIOR = 3688465; // Bucaramanga, donde está la UIS
+
+const $ = (id) => document.getElementById(id);
+const escapar = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const numero = (v, d = 1) => (v ?? null) === null ? '—' : Number(v).toLocaleString('es-CO', { maximumFractionDigits: d });
+
+async function pedir(url, opciones) {
+  const inicio = performance.now();
+  const r = await fetch(url, opciones);
+  const ms = Math.round(performance.now() - inicio);
+  let cuerpo = null;
+  try { cuerpo = await r.json(); } catch { /* sin cuerpo JSON */ }
+  return { r, cuerpo, ms };
+}
+
+function textoError(r, cuerpo) {
+  if (!cuerpo) return `${r.status}`;
+  if (Array.isArray(cuerpo.detail)) return `${r.status}: ${cuerpo.detail.map((d) => d.msg).join('; ')}`;
+  return `${r.status}: ${cuerpo.detalle ?? cuerpo.detail ?? JSON.stringify(cuerpo)}`;
+}
+
+// Pestañas ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('nav button').forEach((boton) => boton.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach((b) => b.setAttribute('aria-selected', String(b === boton)));
+  document.querySelectorAll('main > section').forEach((s) => { s.hidden = s.id !== boton.dataset.vista; });
+  // Un gráfico que se pintó con su pestaña oculta (ancho 0) se redibuja al mostrarla.
+  Object.values(Chart.instances).forEach((grafico) => grafico.resize());
+}));
+
+// 1 · Resiliencia ─────────────────────────────────────────────────────────────────
+const NOMBRES = { servicio_inestable: 'Servicio inestable', open_meteo: 'Open-Meteo', otro_grupo: 'Otro grupo (Parte E)' };
+// Color por resultado: el de estado, siempre con su etiqueta (nunca solo el color).
+function estiloResultado(clave) {
+  if (/^2\d\d$/.test(clave)) return { etiqueta: `✓ ${clave}`, color: css('--good'), orden: 0 };
+  if (clave === '429') return { etiqueta: '⏸ 429 · Retry-After', color: css('--warning'), orden: 2 };
+  if (clave === '503') return { etiqueta: '↻ 503', color: css('--serious'), orden: 3 };
+  if (/^4\d\d$/.test(clave)) return { etiqueta: `■ ${clave} · no se reintenta`, color: css('--neutral'), orden: 1 };
+  return { etiqueta: `✕ ${clave}`, color: css('--critical'), orden: 4 };
+}
+
+const gResultados = new Chart($('g-resultados'), {
+  type: 'bar',
+  data: { labels: [], datasets: [] },
+  options: {
+    indexAxis: 'y',
+    animation: false,
+    scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true, grid: { display: false } } },
+    plugins: { legend: { position: 'bottom' }, tooltip: { mode: 'nearest' } },
+  },
+});
+
+function pintarMetricas(m) {
+  const deps = Object.keys(m.dependencias);
+  $('dependencias').innerHTML = deps.map((dep) => {
+    const d = m.dependencias[dep];
+    let compuerta = '';
+    if (dep === 'servicio_inestable') {
+      const cerrada = d.compuerta_cerrada_hasta;
+      compuerta = cerrada
+        ? `<div class="estado"><span class="punto" style="background:var(--warning)"></span>⏸ Compuerta cerrada hasta ${new Date(cerrada).toLocaleTimeString('es-CO')}</div>`
+        : `<div class="estado"><span class="punto" style="background:var(--good)"></span>✓ Compuerta abierta</div>`;
+    }
+    return `<div class="tarjeta"><h2>${escapar(NOMBRES[dep] ?? dep)}</h2>
+      <div class="kpis">
+        <div class="kpi"><b>${d.llamadas}</b><span>llamadas</span></div>
+        <div class="kpi"><b>${d.reintentos}</b><span>reintentos</span></div>
+        <div class="kpi"><b>${d.respuestas_502 + d.respuestas_504}</b><span>respuestas 502/504</span></div>
+      </div>${compuerta}</div>`;
+  }).join('');
+
+  const claves = [...new Set(deps.flatMap((dep) => Object.keys(m.dependencias[dep].por_resultado)))]
+    .sort((a, b) => estiloResultado(a).orden - estiloResultado(b).orden || a.localeCompare(b));
+  gResultados.data.labels = deps.map((dep) => NOMBRES[dep] ?? dep);
+  gResultados.data.datasets = claves.map((clave) => {
+    const estilo = estiloResultado(clave);
+    return {
+      label: estilo.etiqueta,
+      data: deps.map((dep) => m.dependencias[dep].por_resultado[clave] ?? 0),
+      backgroundColor: estilo.color,
+      borderColor: css('--surface-1'),
+      borderWidth: 1,
+      borderRadius: 4,
+      borderSkipped: false,
+    };
+  });
+  gResultados.update('none');
+
+  const rutas = Object.entries(m.latencia_ms);
+  $('t-latencias').innerHTML = rutas.length
+    ? `<tr><th>Ruta</th><th class="num">Peticiones</th><th class="num">Mediana</th><th class="num">p95</th></tr>` +
+      rutas.map(([ruta, l]) => `<tr><td>${escapar(ruta)}</td><td class="num">${l.peticiones}</td>
+        <td class="num">${numero(l.mediana, 0)} ms</td><td class="num">${numero(l.p95, 0)} ms</td></tr>`).join('')
+    : '<tr><td class="mensaje">Todavía no hay peticiones.</td></tr>';
+
+  const total = m.cache.aciertos + m.cache.fallos;
+  $('cache').innerHTML = `
+    <div class="kpi"><b>${m.cache.aciertos}</b><span>aciertos</span></div>
+    <div class="kpi"><b>${m.cache.fallos}</b><span>fallos</span></div>
+    <div class="kpi"><b>${total ? Math.round((100 * m.cache.aciertos) / total) : 0} %</b><span>aciertos</span></div>`;
+}
+
+async function refrescarMetricas() {
+  try {
+    const { r, cuerpo } = await pedir('/v1/metricas');
+    if (r.ok) pintarMetricas(cuerpo);
+  } catch { /* el agregador se está reiniciando: se reintenta en el próximo ciclo */ }
+}
+refrescarMetricas();
+setInterval(refrescarMetricas, 3000);
+
+$('b-disparar').addEventListener('click', async () => {
+  const boton = $('b-disparar');
+  boton.disabled = true;
+  $('m-disparar').textContent = 'pidiendo… mira los contadores';
+  const { r, cuerpo, ms } = await pedir('/v1/sensores');
+  $('m-disparar').textContent = r.ok
+    ? `${r.status} en ${(ms / 1000).toFixed(1)} s · ${cuerpo.completo ? 'completo' : 'incompleto: ' + cuerpo.motivo}`
+    : textoError(r, cuerpo);
+  boton.disabled = false;
+});
+
+// 2 · Pronóstico ────────────────────────────────────────────────────────────────
+const WMO = [
+  [[0], 'Despejado'], [[1], 'Mayormente despejado'], [[2], 'Parcialmente nublado'], [[3], 'Nublado'],
+  [[45, 48], 'Niebla'], [[51, 53, 55], 'Llovizna'], [[56, 57], 'Llovizna helada'], [[61, 63, 65], 'Lluvia'],
+  [[66, 67], 'Lluvia helada'], [[71, 73, 75, 77], 'Nieve'], [[80, 81, 82], 'Chubascos'],
+  [[85, 86], 'Chubascos de nieve'], [[95], 'Tormenta'], [[96, 99], 'Tormenta con granizo'],
+];
+const tiempo = (codigo) => (WMO.find(([codigos]) => codigos.includes(codigo)) ?? [null, `Código ${codigo}`])[1];
+const fecha = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
+const nombreCiudad = (c) => [c.nombre, c.departamento, c.pais].filter(Boolean).join(', ');
+
+let candidatos = [];
+$('f-buscar').addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const datos = new FormData(evento.target);
+  const params = new URLSearchParams({ nombre: datos.get('nombre') });
+  if (datos.get('pais')) params.set('pais', datos.get('pais').toUpperCase());
+  $('m-buscar').textContent = 'buscando…';
+  const { r, cuerpo, ms } = await pedir(`/v1/ciudades?${params}`);
+  if (!r.ok) { $('m-buscar').innerHTML = `<span class="error">${escapar(textoError(r, cuerpo))}</span>`; return; }
+  candidatos = cuerpo;
+  $('m-buscar').textContent = `${cuerpo.length} candidatos en ${ms} ms`;
+  $('t-candidatos').innerHTML = cuerpo.length
+    ? `<tr><th>Ciudad</th><th>Departamento</th><th>País</th><th class="num">Población</th><th></th></tr>` +
+      cuerpo.map((c, i) => `<tr><td>${escapar(c.nombre)}</td><td>${escapar(c.departamento ?? '—')}</td>
+        <td>${escapar(c.pais ?? '—')}</td><td class="num">${numero(c.poblacion, 0)}</td>
+        <td><button class="secundario" data-ver="${i}">Ver clima</button>
+        <button class="secundario" data-comparar="${i}">Comparar</button></td></tr>`).join('')
+    : '<tr><td class="mensaje">Sin coincidencias.</td></tr>';
+});
+
+$('t-candidatos').addEventListener('click', (evento) => {
+  const boton = evento.target.closest('button');
+  if (!boton) return;
+  if (boton.dataset.ver) verClima(candidatos[boton.dataset.ver]);
+  if (boton.dataset.comparar) agregarComparacion(candidatos[boton.dataset.comparar]);
+});
+
+const graficoLineas = (lienzo) => new Chart(lienzo, {
+  type: 'line',
+  data: { labels: [], datasets: [] },
+  options: {
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom' } },
+    scales: { x: { grid: { display: false } } },
+  },
+});
+const gTemp = graficoLineas($('g-temp'));
+const gLluvia = new Chart($('g-lluvia'), {
+  type: 'bar',
+  data: { labels: [], datasets: [] },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false } } },
+  },
+});
+
+const linea = (etiqueta, datos, color) => ({
+  label: etiqueta, data: datos, borderColor: color, backgroundColor: color,
+  borderWidth: 2, pointRadius: 4, pointHoverRadius: 6, tension: 0.25, spanGaps: true,
+});
+
+async function verClima(ciudad) {
+  const { r, cuerpo, ms } = await pedir(`/v1/ciudades/${ciudad.id}/clima?dias=7`);
+  $('c-clima').hidden = false;
+  $('clima-titulo').textContent = nombreCiudad(ciudad);
+  if (!r.ok) { $('clima-meta').innerHTML = `<span class="error">${escapar(textoError(r, cuerpo))}</span>`; return; }
+  $('clima-meta').textContent = `${ms} ms · Cache-Status: ${r.headers.get('Cache-Status') ?? '—'} · hora local ${cuerpo.actual.hora.replace('T', ' ')} (${cuerpo.zona_horaria})`;
+  const a = cuerpo.actual;
+  $('clima-ahora').innerHTML = [
+    [`${numero(a.temperatura_c)} °C`, 'temperatura'], [`${numero(a.humedad_pct, 0)} %`, 'humedad'],
+    [`${numero(a.viento_kmh)} km/h`, 'viento'], [tiempo(a.codigo_tiempo), 'ahora'],
+  ].map(([valor, etiqueta]) => `<div class="kpi"><b>${escapar(valor)}</b><span>${etiqueta}</span></div>`).join('');
+  const dias = cuerpo.dias.map((d) => fecha(d.fecha));
+  gTemp.data.labels = dias;
+  gTemp.data.datasets = [
+    linea('Máxima', cuerpo.dias.map((d) => d.maxima_c), SERIES[1]),
+    linea('Mínima', cuerpo.dias.map((d) => d.minima_c), SERIES[0]),
+  ];
+  gTemp.update();
+  gLluvia.data.labels = dias;
+  gLluvia.data.datasets = [{
+    label: 'Probabilidad de lluvia (%)', data: cuerpo.dias.map((d) => d.prob_lluvia_pct),
+    backgroundColor: SERIES[0], borderRadius: 4, maxBarThickness: 36,
+  }];
+  gLluvia.update();
+}
+
+// 3 · Comparar ciudades ─────────────────────────────────────────────────────────
+// El color sigue a la ciudad: se asigna al agregarla y no cambia si se quitan otras.
+const comparadas = new Map(); // id → { ciudad, ranura, dias }
+const gComparar = graficoLineas($('g-comparar'));
+
+async function agregarComparacion(ciudad) {
+  if (comparadas.has(ciudad.id)) return;
+  const libres = [0, 1, 2, 3].filter((r) => ![...comparadas.values()].some((c) => c.ranura === r));
+  if (!libres.length) { $('m-comparar').textContent = 'Ya hay 4 ciudades: quita una para agregar otra.'; return; }
+  const { r, cuerpo } = await pedir(`/v1/ciudades/${ciudad.id}/clima?dias=7`);
+  if (!r.ok) { $('m-comparar').textContent = textoError(r, cuerpo); return; }
+  comparadas.set(ciudad.id, { ciudad, ranura: libres[0], dias: cuerpo.dias });
+  document.querySelector('nav button[data-vista="comparar"]').click(); // primero visible, después se pinta
+  pintarComparacion();
+}
+
+function pintarComparacion() {
+  const lista = [...comparadas.values()];
+  $('m-comparar').hidden = lista.length > 0;
+  $('chips').innerHTML = lista.map(({ ciudad, ranura }) => `<span class="chip">
+      <span class="punto" style="background:${SERIES[ranura]}"></span>${escapar(nombreCiudad(ciudad))}
+      <button title="Quitar" data-quitar="${ciudad.id}">×</button></span>`).join('');
+  const referencia = lista[0]?.dias ?? [];
+  gComparar.data.labels = referencia.map((d) => fecha(d.fecha));
+  gComparar.data.datasets = lista.map(({ ciudad, ranura, dias }) =>
+    linea(nombreCiudad(ciudad), dias.map((d) => d.maxima_c), SERIES[ranura]));
+  gComparar.update();
+}
+
+$('chips').addEventListener('click', (evento) => {
+  const id = evento.target.dataset?.quitar;
+  if (id) { comparadas.delete(Number(id)); pintarComparacion(); }
+});
+
+// 4 · Sensores vs exterior ──────────────────────────────────────────────────────
+const graficoBarras = (lienzo) => new Chart(lienzo, {
+  type: 'bar',
+  data: { labels: [], datasets: [] },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { position: 'bottom' } },
+    scales: { x: { beginAtZero: true }, y: { grid: { display: false } } },
+  },
+});
+const gSensTemp = graficoBarras($('g-sensores-temp'));
+const gSensHum = graficoBarras($('g-sensores-hum'));
+
+function compararConExterior(grafico, sensores, exterior, etiquetaExterior) {
+  const etiquetas = [etiquetaExterior, ...sensores.map((s) => `${s.id} · ${s.ubicacion}`)];
+  grafico.data.labels = etiquetas;
+  grafico.data.datasets = [
+    { label: 'Exterior (Bucaramanga, Open-Meteo)', data: [exterior, ...sensores.map(() => null)],
+      backgroundColor: SERIES[1], borderRadius: 4, maxBarThickness: 18 },
+    { label: 'Interior (sensores del campus)', data: [null, ...sensores.map((s) => s.lectura.valor)],
+      backgroundColor: SERIES[0], borderRadius: 4, maxBarThickness: 18 },
+  ];
+  // Cada fila tiene un solo valor: apiladas, no queda el hueco de la otra serie.
+  grafico.options.scales.x.stacked = true;
+  grafico.options.scales.y.stacked = true;
+  grafico.update();
+}
+
+$('b-sensores').addEventListener('click', async () => {
+  const boton = $('b-sensores');
+  boton.disabled = true;
+  const inicio = Date.now();
+  const reloj = setInterval(() => {
+    $('m-sensores').textContent = `pidiendo… ${Math.round((Date.now() - inicio) / 1000)} s (el servicio falla a propósito; ver la pestaña Resiliencia)`;
+  }, 500);
+  const [sens, ext] = await Promise.all([pedir('/v1/sensores'), pedir(`/v1/ciudades/${EXTERIOR}/clima?dias=1`)]);
+  clearInterval(reloj);
+  boton.disabled = false;
+  if (!sens.r.ok) { $('m-sensores').innerHTML = `<span class="error">${escapar(textoError(sens.r, sens.cuerpo))}</span>`; return; }
+  const cuerpo = sens.cuerpo;
+  const conLectura = cuerpo.sensores.filter((s) => s.lectura);
+  $('m-sensores').textContent = `${sens.r.status} en ${(sens.ms / 1000).toFixed(1)} s · ${conLectura.length} de ${cuerpo.sensores.length} con lectura · `
+    + (cuerpo.completo ? 'completo' : `incompleto: ${cuerpo.motivo}`);
+
+  const exterior = ext.r.ok ? ext.cuerpo.actual : null;
+  $('c-sensores').hidden = false;
+  compararConExterior(gSensTemp, conLectura.filter((s) => s.tipo === 'temperatura'), exterior?.temperatura_c ?? null, 'Exterior');
+  compararConExterior(gSensHum, conLectura.filter((s) => s.tipo === 'humedad'), exterior?.humedad_pct ?? null, 'Exterior');
+
+  $('c-tabla-sensores').hidden = false;
+  $('t-sensores').innerHTML = `<tr><th>Sensor</th><th>Tipo</th><th>Ubicación</th><th class="num">Lectura</th><th>Motivo</th></tr>` +
+    cuerpo.sensores.map((s) => `<tr><td>${escapar(s.id)}</td><td>${escapar(s.tipo)}</td><td>${escapar(s.ubicacion)}</td>
+      <td class="num">${s.lectura ? `${numero(s.lectura.valor)} ${escapar(s.lectura.unidad)}` : '—'}</td>
+      <td>${escapar(s.motivo ?? '')}</td></tr>`).join('');
+});
+</script>
+</body>
+</html>

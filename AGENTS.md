@@ -69,7 +69,7 @@ Leer en este orden:
    backend. Su sección Operations es la lista de tareas del código, con el rol de cada
    una (D40).
 5. [`spdd/template/REASONS-canvas.md`](spdd/template/REASONS-canvas.md): la plantilla,
-   para el canvas que falta (el dashboard).
+   para el canvas que falta (el dashboard, P24).
 
 ## Reglas
 
@@ -115,8 +115,9 @@ Leer en este orden:
 
 1. El backend está completo (tareas 1–15). Para la entrega: el comprimido de `main`
    para Moodle con la lista de chequeo de `entrega/`.
-2. Después de la entrega, si se retoma: el canvas del dashboard (D08, D10) y luego su
-   código. La Parte E está en su canvas (D44–D48); si el otro grupo reinicia su túnel,
+2. El dashboard ya existe (`agregador/estatico/dashboard.html`, PR de `feat/dashboard`),
+   pero se hizo sin canvas, a pedido del equipo: antes de cambiarlo, cerrar P24 y
+   escribir su canvas describiendo el código real. La Parte E está en su canvas (D44–D48); si el otro grupo reinicia su túnel,
    cambiar `OTRO_GRUPO_URL` (D48).
 3. Pendiente menor: revisar el análisis y marcarlo como «revisado».
 
